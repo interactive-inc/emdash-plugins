@@ -18,7 +18,7 @@ portless
 - 管理画面: https://emdash-home.open.localhost/_emdash/admin
 - MCP: https://emdash-home.open.localhost/_emdash/api/mcp
 
-`setup:local`は`apps/example/.data/`と、未設定の場合にランダムなプレビュー署名キーを`apps/example/.env`に用意します。
+`setup:local`は`apps/web/.data/`と、未設定の場合にランダムなプレビュー署名キーを`apps/web/.env`に用意します。
 `seed`はサンプルのホームとガイドを作ります。同じslugの既存ページは上書きしません。
 Portlessから起動すると、AstroはPortlessの子プロセスとして動きます。停止は`vp run dev:stop`、状態は`vp run dev:status`で確認できます。
 依存パッケージ・Astro設定・環境変数・プラグインのビルドを変更する前に、このアプリを完全に停止してください。変更後に`portless`で起動し直します。EmDash 1.3.1では内部再起動前のランタイムが残り、保存時に`Vite module runner has been closed`となる場合があります。DBやセッションを削除する必要はありません。
@@ -88,7 +88,7 @@ EmDashの標準フィールドとして`slug: "home"`を指定するとホーム
 
 - 公開ページとプレビューは同じAstro + Reactレンダラーを使います。
 - Pagesでページを開くと、保存済み下書きの大きなプレビューを自動表示します。内容を確認してEmDash標準の公開ボタンで公開します。
-- Page JSON・タイトル・説明の手動入力欄は、標準のフィールドwidgetで置き換えています。作成・変更はチャットから行い、保存したら「プレビューを更新」で確認します。公開状態・履歴・権限はEmDashが管理します。
+- Page JSON・タイトル・説明の手動入力欄は、標準のフィールドwidgetで置き換えています。作成・変更はチャットから行い、保存した下書きはプレビュー枠に自動で表示されます。公開状態・履歴・権限はEmDashが管理します。
 - EmDash標準のView on siteも同じページを表示します。
 - 独自プレビューURLは15分有効で、対象の1ページだけを許可します。
 - ページから参照する別記事は公開状態に従います。ページのトークンで別記事の下書きは読めません。

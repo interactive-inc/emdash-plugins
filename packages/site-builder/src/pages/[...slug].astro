@@ -1,9 +1,11 @@
 ---
+import options from 'virtual:site-builder/config';
+import components from 'virtual:site-builder/extensions';
 import PageShell from '../PageShell.astro';
 import { pageResponse } from '@open-emdash/site-builder/server';
-const slug = Astro.params.slug || 'home';
-const { page, status } = await pageResponse(slug);
+const slug = Astro.params.slug || options.homeSlug;
+const { page, status } = await pageResponse(slug, options, components);
 Astro.response.status = status;
 Astro.response.headers.set('Cache-Control', 'private, no-store');
 ---
-<PageShell page={page} status={status} />
+<PageShell page={page} status={status} components={components} />

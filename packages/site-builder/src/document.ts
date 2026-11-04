@@ -1,6 +1,6 @@
 import { evaluateVisibility, resolvePropValue, type Spec } from '@json-render/core';
 import { z } from 'zod';
-import { componentProps, containerNames } from './catalog.ts';
+import { componentContract, type ComponentExtensions } from './extensions.ts';
 
 const name = z.string().regex(/^[a-z][a-z0-9_]*$/).max(60);
 const statePath = z.string().regex(/^\/(page|data)(\/[a-zA-Z0-9_-]+)*$/).max(300);
@@ -10,7 +10,7 @@ const binding = z.union([
   z.strictObject({ $template: z.string().max(2000) }),
 ]);
 const elementSchema = z.strictObject({
-  type: z.enum(Object.keys(componentProps) as [keyof typeof componentProps, ...(keyof typeof componentProps)[]]),
+  type: z.string().regex(/^[A-Z][a-zA-Z0-9]{0,59}$/),
   props: z.record(z.string(), z.unknown()),
   children: z.array(z.string().min(1).max(80)).max(100).optional(),
   repeat: z.strictObject({ statePath: z.string().regex(/^\/data\/[a-z][a-z0-9_]*$/), key: z.string().regex(/^[a-zA-Z_][a-zA-Z0-9_]*$/) }).optional(),
@@ -43,7 +43,8 @@ function isBinding(value: unknown): boolean {
 }
 
 /** Validates both the catalog contract and bounded tree structure before storage or rendering. */
-export function validateDocument(input: unknown): ValidationResult {
+export function validateDocument(input: unknown, extensions: ComponentExtensions = {}): ValidationResult {
+  const { props: componentProps, containers: containerNames } = componentContract(extensions);
   let serialized: string;
   try { serialized = JSON.stringify(input); } catch { return { success: false, errors: ['Document must be JSON'] }; }
   if (!serialized || serialized.length > 200000) return { success: false, errors: ['Document exceeds 200 KB'] };
@@ -55,13 +56,14 @@ export function validateDocument(input: unknown): ValidationResult {
   const keys = Object.keys(elements);
   if (keys.length > 200) errors.push('At most 200 elements are allowed');
   for (const [key, element] of Object.entries(elements)) {
-    const shape = componentProps[element.type].shape;
+    if (!Object.hasOwn(componentProps, element.type)) { errors.push(`${key}: unregistered component`); continue; }
+    const shape = componentProps[element.type]!.shape;
     for (const prop of Object.keys(element.props)) {
       if (!Object.hasOwn(shape, prop)) errors.push(`${key}.${prop}: unknown property`);
     }
     for (const [prop, validator] of Object.entries(shape)) {
       const value = element.props[prop];
-      const result = isBinding(value) ? binding.safeParse(value) : validator.safeParse(value);
+      const result = isBinding(value) ? binding.safeParse(value) : (validator as z.ZodType).safeParse(value);
       if (!result.success) errors.push(`${key}.${prop}: ${result.error.issues[0]?.message}`);
     }
     if ((element.children?.length || element.repeat) && !containerNames.has(element.type)) errors.push(`${key}: only containers may have children or repeat`);
@@ -87,7 +89,8 @@ export function validateDocument(input: unknown): ValidationResult {
 }
 
 /** Binding results are revalidated so data cannot inject props outside the component contract. */
-export function validateResolvedSpec(document: PageDocument, state: PageState): Spec {
+export function validateResolvedSpec(document: PageDocument, state: PageState, extensions: ComponentExtensions = {}): Spec {
+  const { props: componentProps } = componentContract(extensions);
   const errors: string[] = [];
   const walk = (key: string, item?: unknown) => {
     const element = document.spec.elements[key];

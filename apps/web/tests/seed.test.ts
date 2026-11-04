@@ -13,7 +13,7 @@ test('the page editor presents a preview instead of editable internal fields', (
   }
 });
 
-test('the example pages validate and resolve with the distributed package', () => {
+test('the web app pages validate and resolve with the distributed package', () => {
   for (const page of seed.content.pages) {
     const validation = validateDocument(page.data.document);
     assert.equal(validation.success, true);

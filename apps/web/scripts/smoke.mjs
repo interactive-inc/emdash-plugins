@@ -1,4 +1,8 @@
 import assert from 'node:assert/strict';
+import { getPreviewUrl } from 'emdash';
+if (!process.env.EMDASH_PREVIEW_SECRET) { try { process.loadEnvFile('.env'); } catch (error) { if (error.code !== 'ENOENT') throw error; } }
+const previewSecret = process.env.EMDASH_PREVIEW_SECRET;
+assert.ok(previewSecret, 'Set EMDASH_PREVIEW_SECRET to verify expired signed previews');
 
 const origin = process.env.SMOKE_ORIGIN ?? process.env.PORTLESS_URL ?? 'https://emdash-home.open.localhost';
 const hostname = new URL(origin).hostname;
@@ -6,6 +10,7 @@ assert.ok(['localhost', '127.0.0.1', '[::1]'].includes(hostname) || hostname.end
 let cookie = '';
 let bearer = '';
 let toolTokenId;
+const extraTokenIds = [];
 const created = [];
 
 async function request(path, body, method = body === undefined ? 'GET' : 'POST', authenticated = true) {
@@ -70,6 +75,12 @@ try {
   assert.ok(catalog && preview && validate, `Missing plugin tools: ${tools.map(tool => tool.name).join(', ')}`);
   await mcp(catalog.name);
   await mcp(validate.name, { document: pageDocument('Valid') });
+  bearer = '';
+  const limited = success(await request('/_emdash/api/admin/api-tokens', { name: 'site-builder-smoke-no-plugin-scope', scopes: ['content:read'] }), 'limited token');
+  extraTokenIds.push(limited.info.id);
+  bearer = limited.token;
+  const deniedTool = await request('/_emdash/api/mcp', { jsonrpc: '2.0', id: 2, method: 'tools/call', params: { name: catalog.name, arguments: {} } });
+  assert.ok(!deniedTool.response.ok || deniedTool.value.error || deniedTool.value.result?.isError, 'A token without plugin scope cannot invoke plugin tools');
   console.log('PASS: MCP discovery, catalog, validation and scoped authorization');
   bearer = originalBearer;
 
@@ -105,7 +116,15 @@ try {
   assert.match(draft.response.headers.get('cache-control'), /no-store/);
   assert.match(draft.response.headers.get('x-robots-tag'), /noindex/);
   assert.equal((await publicPage(previewData.url.replace(/_preview=./, '_preview=x'))).response.status, 404);
-  console.log('PASS: draft preview works with a scoped signed URL; unsigned and tampered URLs are denied');
+  const expiredUrl = await getPreviewUrl({ collection: 'pages', id, secret: previewSecret, expiresIn: -60, pathPattern: '/preview/{id}' });
+  const expired = await publicPage(expiredUrl);
+  assert.equal(expired.response.status, 404, 'A correctly signed but expired token must be rejected');
+  assert.doesNotMatch(expired.value, /FIRST DRAFT/);
+  assert.match(expired.response.headers.get('cache-control'), /no-store/);
+  assert.match(expired.response.headers.get('x-robots-tag'), /noindex/);
+  const wrongCollection = await getPreviewUrl({ collection: 'posts', id, secret: previewSecret, expiresIn: 900, pathPattern: '/preview/{id}' });
+  assert.equal((await publicPage(wrongCollection)).response.status, 404, 'A token for another collection must be rejected');
+  console.log('PASS: valid previews work; unsigned, tampered, expired and wrong-collection tokens are denied');
 
   await publish('pages', id);
   assert.match((await publicPage(`/${slug}`)).value, /FIRST DRAFT/);
@@ -149,5 +168,6 @@ try {
     const entry = await read(collection, id).catch(() => null);
     if (entry) await request(`/_emdash/api/content/${collection}/${id}`, { _rev: entry._rev }, 'DELETE');
   }
-  if (toolTokenId) { bearer = ''; await request(`/_emdash/api/admin/api-tokens/${toolTokenId}`, undefined, 'DELETE'); }
+  bearer = '';
+  for (const tokenId of [...extraTokenIds, toolTokenId].filter(Boolean)) await request(`/_emdash/api/admin/api-tokens/${tokenId}`, undefined, 'DELETE');
 }

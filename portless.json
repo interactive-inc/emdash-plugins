@@ -1,6 +1,6 @@
 {
   "apps": {
-    "apps/example": {
+    "apps/web": {
       "name": "emdash-home.open"
     }
   }

@@ -1,3 +1,5 @@
+import { resolveOptions, type SiteBuilderOptions } from '../options.ts';
+import type { ComponentExtensions } from '../extensions.ts';
 import { getEmDashCollection, getEmDashEntry } from 'emdash';
 import { validateDocument, validateResolvedSpec, type PageDocument, type PageState } from '../document.ts';
 
@@ -12,11 +14,12 @@ export type LoadedPage = {
 };
 
 /** All reads go through EmDash's published-entry and scoped preview checks. */
-export async function loadPage(identifier: string): Promise<LoadedPage | null> {
-  const { entry, error, isPreview } = await getEmDashEntry('pages', identifier);
+export async function loadPage(identifier: string, input: SiteBuilderOptions = {}, components: ComponentExtensions = {}): Promise<LoadedPage | null> {
+  const options = resolveOptions(input);
+  const { entry, error, isPreview } = await getEmDashEntry(options.collection, identifier);
   if (error) throw new Error('Could not load page');
   if (!entry) return null;
-  const validated = validateDocument(entry.data.document);
+  const validated = validateDocument(entry.data.document, components);
   if (!validated.success) throw new Error('Stored page JSON is invalid');
   const document = validated.document;
   const title = typeof entry.data.title === 'string' ? entry.data.title : '';
@@ -33,6 +36,6 @@ export async function loadPage(identifier: string): Promise<LoadedPage | null> {
     return [name, result.entries.map(item => ({ ...item.data, id: item.id }))];
   })));
   const state: PageState = { page: { title, description, slug }, data };
-  validateResolvedSpec(document, state);
+  validateResolvedSpec(document, state, components);
   return { id: entry.id, title, description, slug, document, state, isPreview };
 }

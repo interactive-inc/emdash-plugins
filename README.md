@@ -5,7 +5,7 @@ EmDash本体は変更せず、ネイティブプラグインとして組み込�
 
 ```text
 packages/site-builder/  プラグイン・MCP・検証・描画・CSS・プレビュー
-apps/example/          プラグインを利用するAstro + EmDashのサンプル
+apps/web/          プラグインを利用するAstro + EmDashのサンプル
 scripts/               別プロジェクトへの導入検証
 .docs/                 目的・設計判断・検証状況
 ```
@@ -29,9 +29,9 @@ portless
 停止は`vp run dev:stop`、状態確認は`vp run dev:status`です。
 プラグインのTypeScriptを変更した場合は、停止して`portless`で再起動してください。
 依存パッケージ・Astro設定・環境変数を変更するときも、先にこのアプリを完全に停止し、変更後に起動し直してください。EmDash 1.3.1は内部再起動後に古いランタイムを保持する場合があり、保存時に`Vite module runner has been closed`が発生します。この場合はブラウザーの更新だけでは復旧せず、アプリのプロセス再起動が必要です。
-ローカルDB・メディア・署名キーは`apps/example/.data/`と`apps/example/.env`に保存します。
+ローカルDB・メディア・署名キーは`apps/web/.data/`と`apps/web/.env`に保存します。
 
-[サンプルの操作・MCP接続手順](apps/example/README.md) · [プラグインの導入方法と公開API](packages/site-builder/README.md)
+[サンプルの操作・MCP接続手順](apps/web/README.md) · [プラグインの導入方法と公開API](packages/site-builder/README.md)
 
 ## 検査
 
@@ -45,7 +45,7 @@ vp run test:package  # 別フォルダーにtgzをインストールしてビル
 
 `test:package`は一時フォルダー内だけで導入用の圧縮ファイルと独立したEmDashホストを作成します。リポジトリに配布ファイルは残しません。インターネットから依存を取得する場合があります。
 ルートは開発用のprivateワークスペースで、配布対象は`packages/site-builder`だけです。
-プラグインもnpm未公開のため`private: true`を維持しています。公開時はパッケージ名の所有権・ライセンス・公開設定を決定します。
+プラグインはMITライセンスで、`publishConfig.access: public`を設定しています。npmへの公開は`@open-emdash`スコープの所有権を確認してから別の操作として行います。
 `.env`、DB、セッション、サンプルのコンテンツは配布ファイルに含めません。
 
 `vp run smoke`はMCPクライアントの登録なしで、実際のMCPへ接続してツール一覧・作成・公開・プレビューを確認します。Portless以外で直接起動した場合は`SMOKE_ORIGIN=http://127.0.0.1:4331 vp run smoke`を使います。
@@ -63,10 +63,10 @@ HOST=127.0.0.1 PORT=4332 vp run start
 vp run deploy:production
 ```
 
-先に[Cloudflareの設定手順](.docs/deployment.md)に従い、Git管理外の`apps/example/wrangler.production.jsonc`を用意してください。このコマンドはその設定でCloudflare用にビルドし、生成された設定でWorkerへ反映します。既存の本番DBをseedで上書きしません。Node用のビルドとは出力先を分けています。
+先に[Cloudflareの設定手順](.docs/deployment.md)に従い、Git管理外の`apps/web/wrangler.production.jsonc`を用意してください。このコマンドはその設定でCloudflare用にビルドし、生成された設定でWorkerへ反映します。既存の本番DBをseedで上書きしません。Node用のビルドとは出力先を分けています。
 ローカルの開発アプリは停止してから実行し、完了後に`portless`で起動し直してください。
-本番のorigin・秘密情報・永続化については[サンプルの説明](apps/example/README.md#本番実行と更新)を参照してください。
+本番のorigin・秘密情報・永続化については[サンプルの説明](apps/web/README.md#本番実行と更新)を参照してください。
 
 ## ライセンス
 
-現在ライセンスは付与していません。npmへの公開も行っていません。
+MIT License。詳細は[LICENSE](LICENSE)を参照してください。npmへの公開はまだ行っていません。

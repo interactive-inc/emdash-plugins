@@ -3,8 +3,8 @@ import { SiteRenderer } from '@open-emdash/site-builder/renderer';
 import type { LoadedPage } from './server/load-page.ts';
 import './styles/site.css';
 
-type Props = { page: LoadedPage | null; status: number; previewRoute?: boolean };
-const { page, status, previewRoute = false } = Astro.props;
+type Props = { page: LoadedPage | null; status: number; previewRoute?: boolean; components?: import('./extensions.ts').ComponentExtensions };
+const { page, status, previewRoute = false, components = {} } = Astro.props;
 const preview = previewRoute || page?.isPreview;
 const title = page?.title ?? (status === 404 ? 'ページが見つかりません' : 'ページを表示できません');
 ---
@@ -17,10 +17,10 @@ const title = page?.title ?? (status === 404 ? 'ページが見つかりませ�
     {page?.description && <meta name="description" content={page.description} />}
     {(preview || status !== 200) && <meta name="robots" content="noindex, nofollow" />}
   </head>
-  <body>
+  <body class={preview ? 'is-preview' : undefined}>
     {preview && <aside class="preview-banner" role="status">プレビュー — 保存済みの内容を表示しています</aside>}
     <main>
-      {page ? <SiteRenderer document={page.document} state={page.state} /> :
+      {page ? <SiteRenderer document={page.document} state={page.state} components={components} /> :
         <div class="error-page"><p class="error-code">{status}</p><h1>{title}</h1><p>{status === 404 ? 'URLをご確認ください。' : '少し時間をおいて、もう一度お試しください。'}</p><a href="/">ホームへ</a></div>}
     </main>
   </body>

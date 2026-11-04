@@ -6,10 +6,10 @@ EmDashの認証・コンテンツ管理・公開管理を使い、MCPからjson-
 ## 導入
 
 npmにはまだ公開していません。現在のサンプルは`workspace:*`でプラグインを参照します。
-npm公開後は、EmDashプロジェクトへ`vp add @open-emdash/site-builder`で組み込める構成です。
+公開後は、EmDashプロジェクトへ`vp add @open-emdash/site-builder`で組み込めます。
 通常の開発に圧縮ファイルは不要です。別プロジェクトへの導入検証時だけ、一時フォルダー内で生成・利用します。
 
-現在の対応対象はAstro 7.4.2、EmDash 1.3.1、React/React DOM 19.2.4以降の19系です。
+対応対象はAstro 7.4.2以降の7系、EmDash 1.3.1以降の1系、React/React DOM 19.2.4以降の19系です。検証済みの組み合わせはAstro 7.4.2 + EmDash 1.3.1です。
 既存ホストに`@astrojs/react`の登録とEmDashのlive collection設定が必要です。
 
 EmDashとCloudflareツールが固定している間接依存の修正版を使うため、このリポジトリでは`pnpm-workspace.yaml`にZod 4.6.7 / undici 7.30.1のoverridesを指定しています。別ホストへの導入時も同等の設定と依存監査が必要です。パッケージのインストールだけではホスト側の間接依存は置き換わりません。
@@ -42,8 +42,8 @@ import { siteBuilderPages } from '@open-emdash/site-builder/astro';
 これらのフィールドはEmDashの管理画面または標準MCPのスキーマ操作で用意できます。既存DBへサンプルコンテンツを一括投入する必要はありません。
 
 `document.widget`に`site-builder:page-preview`を指定すると、EmDash標準のフィールド拡張でJSON入力欄を大きなプレビューに置き換えます。`title`と`description`には`site-builder:managed`を指定し、チャットで管理する値を通常画面の入力欄から隠せます。保存データ・検証・APIからの更新は維持されます。既存サイトでは標準のフィールド更新APIでwidgetだけを設定してください。
-ページを開くと保存済み下書きを自動表示し、変更後は「プレビューを更新」で確認します。公開はEmDash標準の公開ボタンを使います。Site Studioとサイドパネルは追加しません。
-管理画面の取得・ルーティングには、EmDash 1.3.1と同じバージョンのTanStack Query / Routerを使用します。移植可能なプラグインとしてホストの別名設定に依存しない相対importと標準HTML操作部品を使います。
+ページを開くと保存済み下書きをプレビュー枠だけで表示し、保存内容が変わると自動で読み込み直します。公開はEmDash標準の公開ボタンを使います。Site Studioとサイドパネルは追加しません。
+管理画面の部品はReactとブラウザー標準APIだけで取得・URL判定を行い、EmDash内部のTanStack Query / Routerには依存しません。移植可能なプラグインとしてホストの別名設定に依存しない相対importと標準HTML操作部品を使います。
 
 ## 認証とプレビュー
 
@@ -61,6 +61,7 @@ import { siteBuilderPages } from '@open-emdash/site-builder/astro';
 | `@open-emdash/site-builder` | `siteBuilder()`をEmDashのpluginsへ登録 |
 | `@open-emdash/site-builder/astro` | `siteBuilderPages()`で公開・プレビュールートを追加 |
 | `@open-emdash/site-builder/catalog` | 部品カタログ・JSON仕様・MCP向けガイド |
+| `@open-emdash/site-builder/extensions` | `defineComponent()`と独自部品向けの`safeUrl()` |
 | `@open-emdash/site-builder/document` | ページJSONの型・検証 |
 | `@open-emdash/site-builder/renderer` | `SiteRenderer`を独自ページから使用 |
 | `@open-emdash/site-builder/server` | `pageResponse()`で公開/下書きルールに従ってページを解決 |
@@ -71,5 +72,57 @@ import { siteBuilderPages } from '@open-emdash/site-builder/astro';
 サーバー用の入口はJavaScriptと型定義をビルドして配布し、React/Astro/CSSはホストのビルドで処理するソースとして配布します。
 配布するソース内は相対importを維持し、ホスト固有の`@/`エイリアスには依存しません。
 
-現在は登録済み12種類の部品を使用します。独自部品の登録APIや、別コレクション・別URL配下への設定は今後の拡張です。
-npmへの公開、ライセンスの選定、対応バージョン範囲の拡大はまだ行っていません。
+標準では12種類の部品を使用します。ホスト側で独自部品を登録し、保存先コレクション・公開URL・プレビューURLを変更できます。
+ライセンスはMITです。npmへの公開はまだ行っていません。
+
+
+## 保存先・URL・部品の拡張
+
+`siteBuilder()`と`siteBuilderPages()`に同じ設定を渡します。省略時は従来どおり`pages`、公開URLは`/`配下、トップページのslugは`home`、プレビューは`/preview`配下です。
+設定変更前に開発アプリを停止し、変更後に起動し直してください。
+
+```js
+// astro.config.mjs
+const builder = {
+  collection: 'landing',
+  basePath: '/site',
+  previewPath: '/draft/view',
+  homeSlug: 'index',
+  componentsModule: './src/site-components.tsx',
+};
+// integrations: [react(), siteBuilderPages(builder), emdash({
+//   ...既存設定, plugins: [siteBuilder(builder)]
+// })]
+```
+
+この例では`landing`の`index`を`/site`に、他のslugを`/site/{slug}`に表示します。`landing`には上記と同じtitle・description・documentのフィールドとdrafts・revisions・previewを設定し、EmDashのURL patternも`/site/{slug}`に合わせます。既存コンテンツの自動移行はしません。管理画面のdocumentプレビューも設定したコレクションを対象にします。
+パスにはローカルな固定セグメントだけを指定でき、外部URL、クエリー、相対移動、EmDashの管理用パスは使えません。既存ホストの同じURLを使うルートとの重複は避けてください。1ホストにつきSite Builderは1設定です。
+
+`componentsModule`はホストのAstroプロジェクトルートからのパスです。独自部品を使うホストには`zod`（このパッケージと同じ4系）を直接依存として追加します。
+
+```tsx
+// src/site-components.tsx
+import { z } from 'zod';
+import { defineComponent } from '@open-emdash/site-builder/extensions';
+
+export default {
+  Notice: defineComponent({
+    props: z.object({ text: z.string().max(2000) }),
+    description: 'お知らせを表示する部品',
+    component: ({ props }) => <aside className="notice">{props.text}</aside>,
+  }),
+};
+```
+
+登録したスキーマはMCPのカタログと保存時・公開時・データ解決後の検証に使われ、同じReact部品が公開とプレビューで描画されます。コンテナには`container: true`を指定し、`children`を描画します。既存の標準部品名の上書き、イベント・style・生HTML用プロパティは登録できません。未登録の部品や未知のプロパティも拒否します。
+独自部品はホストが信頼するコードです。チャットからコードや部品定義を追加する機能ではありません。文字列をコードやHTMLとして実行せず、リンク・画像を扱う場合は同じ公開入口の`safeUrl`でURLを確認してください。部品のCSSはホスト側で読み込みます。
+
+独自のルートを実装する場合は`pageResponse(identifier, builder, components)`と`<SiteRenderer document={page.document} state={page.state} components={components} />`で同じ設定・部品定義を渡します。単独で検証するときも`validateDocument(document, components)`を使用します。
+
+## 権限と検証
+
+プレビュー発行はEmDashの`content:read_drafts`権限に従います。匿名とSubscriberは拒否し、Contributor・Author・Editor・Adminは許可します。MCPでは加えて`mcp:tools:site-builder`スコープが必要です。管理画面は標準セッションを使います。EmDash 1.3.1のプラグインRESTルートをPATで直接呼ぶ場合は`admin`スコープも必要ですが、ロールによる権限チェックは引き続き適用されます。署名リンクは発行から15分有効で、コレクションと1ページに限定されます。
+
+- `vp run test`: ロール別の発行可否・署名対象・15分の有効期間、独自部品の検証とSSR、設定とエディターの対象を確認します。
+- `vp run smoke`: ローカルAPI/MCPで署名改ざん・期限切れ・別コレクション/ページへの流用・スコープ不足を確認します。`.env`または環境変数に、起動中のサーバーと同じ`EMDASH_PREVIEW_SECRET`が必要です。
+- `vp run test:package`: 一時ホストに配布物をインストールし、実ユーザーのロール別HTTP権限、標準構成と独自部品・保存先・URLを変えた構成を開発/本番SSRで確認します。テスト用ユーザーとトークンは一時ホストのDBにだけ作成します。

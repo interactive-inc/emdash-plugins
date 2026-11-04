@@ -1,7 +1,9 @@
 ---
+import options from 'virtual:site-builder/config';
+import components from 'virtual:site-builder/extensions';
 import PageShell from '../../PageShell.astro';
 import { pageResponse } from '@open-emdash/site-builder/server';
-const result = await pageResponse(Astro.params.id ?? '');
+const result = await pageResponse(Astro.params.id ?? '', options, components);
 // A preview URL must actually authorize this entry; a guessed ID cannot act as a draft URL.
 const page = result.page?.isPreview ? result.page : null;
 const status = page ? 200 : result.status === 503 ? 503 : 404;
@@ -9,4 +11,4 @@ Astro.response.status = status;
 Astro.response.headers.set('Cache-Control', 'private, no-store');
 Astro.response.headers.set('X-Robots-Tag', 'noindex, nofollow');
 ---
-<PageShell page={page} status={status} previewRoute />
+<PageShell page={page} status={status} components={components} previewRoute />

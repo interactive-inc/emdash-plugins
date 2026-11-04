@@ -13,7 +13,7 @@ import { setTimeout as delay } from 'node:timers/promises';
 
 const executeFile = promisify(execFile);
 const repository = dirname(dirname(fileURLToPath(import.meta.url)));
-const example = join(repository, 'apps/example');
+const web = join(repository, 'apps/web');
 const fixture = await mkdtemp(join(tmpdir(), 'open-emdash-package-'));
 const previewSecret = randomBytes(32).toString('hex');
 const inheritedEnvironment = Object.fromEntries(Object.entries(process.env).filter(([name]) => !name.startsWith('EMDASH_') && !['SITE_URL', 'PREVIEW_SECRET', 'AUTH_SECRET'].includes(name)));
@@ -70,16 +70,16 @@ try {
     assert.ok(contents.includes(`package/${file}`), `Missing packaged file: ${file}`);
   }
   assert.doesNotMatch(contents, /\/(?:\.env(?:\.|\/|$)|\.data\/|\.astro\/|node_modules\/|apps\/|tests\/)/m);
-  const localEnvironment = await readFile(join(example, '.env'), 'utf8').catch(() => '');
+  const localEnvironment = await readFile(join(web, '.env'), 'utf8').catch(() => '');
   const localSecret = localEnvironment.match(/^EMDASH_PREVIEW_SECRET=(.+)$/m)?.[1];
   if (localSecret) assert.ok(!gunzipSync(await readFile(archive)).includes(Buffer.from(localSecret)), 'Local secret found in package');
   console.log('PASS: npm archive includes its runtime, types, routes, admin and CSS, and excludes local state');
 
-  const exampleManifest = JSON.parse(await readFile(join(example, 'package.json'), 'utf8'));
-  const dependencies = { '@open-emdash/site-builder': `file:${archive}` };
-  for (const name of Object.keys(exampleManifest.dependencies)) {
+  const webManifest = JSON.parse(await readFile(join(web, 'package.json'), 'utf8'));
+  const dependencies = { '@open-emdash/site-builder': `file:${archive}`, zod: manifest.dependencies.zod };
+  for (const name of Object.keys(webManifest.dependencies)) {
     if (name === '@open-emdash/site-builder') continue;
-    const installed = JSON.parse(await readFile(join(example, 'node_modules', name, 'package.json'), 'utf8'));
+    const installed = JSON.parse(await readFile(join(web, 'node_modules', name, 'package.json'), 'utf8'));
     dependencies[name] = installed.version;
   }
   await writeFile(join(fixture, 'package.json'), JSON.stringify({ name: 'isolated-emdash-host', private: true, type: 'module', dependencies, emdash: { seed: 'seed/seed.json' } }, null, 2));
@@ -88,10 +88,10 @@ try {
   await cp(join(repository, 'pnpm-workspace.yaml'), join(fixture, 'pnpm-workspace.yaml'));
   await mkdir(join(fixture, 'src/pages'), { recursive: true });
   await mkdir(join(fixture, '.data'));
-  await cp(join(example, 'astro.config.mjs'), join(fixture, 'astro.config.mjs'));
-  await cp(join(example, 'tsconfig.json'), join(fixture, 'tsconfig.json'));
-  await cp(join(example, 'src/live.config.ts'), join(fixture, 'src/live.config.ts'));
-  await cp(join(example, 'seed'), join(fixture, 'seed'), { recursive: true });
+  await cp(join(web, 'astro.config.mjs'), join(fixture, 'astro.config.mjs'));
+  await cp(join(web, 'tsconfig.json'), join(fixture, 'tsconfig.json'));
+  await cp(join(web, 'src/live.config.ts'), join(fixture, 'src/live.config.ts'));
+  await cp(join(web, 'seed'), join(fixture, 'seed'), { recursive: true });
   await writeFile(join(fixture, 'src/pages/existing.astro'), `---
 Astro.response.headers.set('Content-Security-Policy', "frame-ancestors 'none'");
 ---
@@ -108,12 +108,40 @@ Astro.response.headers.set('Content-Security-Policy', "frame-ancestors 'none'");
   await run(process.execPath, [astroCli, 'dev', '--background', '--host', '127.0.0.1', '--port', String(developmentPort)]);
   hasDevServer = true;
   await waitForServer(developmentOrigin);
-  const smokeOutput = await run(process.execPath, [join(example, 'scripts/smoke.mjs')], fixture, { ...environment, SMOKE_ORIGIN: developmentOrigin });
+  const smokeOutput = await run(process.execPath, [join(web, 'scripts/smoke.mjs')], fixture, { ...environment, SMOKE_ORIGIN: developmentOrigin });
   process.stdout.write(smokeOutput);
   await checkPage(developmentOrigin, '/existing', 200, 'Existing host route');
   const setup = await jsonRequest(developmentOrigin, '/_emdash/api/setup/dev-bypass?token=1', '');
   const home = await jsonRequest(developmentOrigin, '/_emdash/api/content/pages/home', setup.token);
   const preview = await jsonRequest(developmentOrigin, '/_emdash/api/plugins/site-builder/preview', setup.token, { id: home.item.id });
+  // Seed real EmDash users/PATs only in this disposable SQLite host. Requests
+  // still go through EmDash authentication, RBAC and plugin route dispatch.
+  const roleTokens = JSON.parse(await run(process.execPath, ['--input-type=module', '-e', `
+    import { DatabaseSync } from 'node:sqlite';
+    import { randomBytes, createHash } from 'node:crypto';
+    const db = new DatabaseSync('.data/emdash.db');
+    db.exec('PRAGMA busy_timeout = 5000');
+    const tokens = [];
+    for (const role of [10, 20, 30, 40, 50]) {
+      const id = 'package-role-' + role;
+      const token = 'ec_pat_' + randomBytes(32).toString('base64url');
+      const now = new Date().toISOString();
+      db.prepare('INSERT INTO users (id, email, name, role, email_verified, created_at, updated_at) VALUES (?, ?, ?, ?, 1, ?, ?)').run(id, id + '@example.test', id, role, now, now);
+      db.prepare('INSERT INTO _emdash_api_tokens (id, name, token_hash, prefix, user_id, scopes) VALUES (?, ?, ?, ?, ?, ?)').run(id, id, createHash('sha256').update(token).digest('base64url'), token.slice(0, 15), id, JSON.stringify(['admin', 'content:read', 'content:write', 'mcp:tools:site-builder']));
+      tokens.push({ role, token });
+    }
+    db.close();
+    console.log(JSON.stringify(tokens));
+  `]));
+  for (const { role, token } of roleTokens) {
+    const response = await fetch(new URL('/_emdash/api/plugins/site-builder/preview', developmentOrigin), {
+      method: 'POST', headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' }, body: JSON.stringify({ id: home.item.id }),
+    });
+    assert.equal(response.status, role < 20 ? 403 : 200, `Unexpected preview permission for role ${role}`);
+    if (role < 20) assert.ok(!(await response.text()).includes('_preview='), 'Denied role must not receive a signed URL');
+  }
+  console.log('PASS: real subscriber, contributor, author, editor and admin tokens obey EmDash preview permissions');
+
   await run(process.execPath, [astroCli, 'dev', 'stop']);
   hasDevServer = false;
   await run(process.execPath, [astroCli, 'build']);
@@ -145,6 +173,60 @@ Astro.response.headers.set('Content-Security-Policy', "frame-ancestors 'none'");
   await checkPage(productionOrigin, '/_emdash/api/mcp', 401);
   assert.equal(productionLog.length, 0, 'Production server reported an error');
   console.log('PASS: installed package serves production SSR and previews, and rejects dev login and anonymous MCP');
+
+  productionServer.kill('SIGTERM');
+  await once(productionServer, 'exit');
+  productionServer = undefined;
+  // Reconfigure the same isolated consumer to exercise all supported extension
+  // points through a packaged install, including production bundling.
+  const configured = { collection: 'landing', basePath: '/site', previewPath: '/draft/view', homeSlug: 'index', componentsModule: './src/components.tsx' };
+  const configSource = await readFile(join(fixture, 'astro.config.mjs'), 'utf8');
+  await writeFile(join(fixture, 'astro.config.mjs'), configSource.replace('siteBuilderPages()', `siteBuilderPages(${JSON.stringify(configured)})`).replace('siteBuilder()', `siteBuilder(${JSON.stringify(configured)})`));
+  await writeFile(join(fixture, 'src/components.tsx'), `
+    import { z } from 'zod';
+    import { defineComponent } from '@open-emdash/site-builder/extensions';
+    export default { Notice: defineComponent({ props: z.object({ text: z.string().max(120) }), description: 'A host notice', component: ({ props }) => <aside data-custom="notice">{props.text}</aside> }) };
+  `);
+  const seed = JSON.parse(await readFile(join(fixture, 'seed/seed.json'), 'utf8'));
+  seed.collections.push({ ...seed.collections.find(item => item.slug === 'pages'), slug: 'landing', label: 'Landing', urlPattern: '/site/{slug}' });
+  const customDocument = { version: 1, spec: { root: 'notice', elements: { notice: { type: 'Notice', props: { text: 'CUSTOM REGISTERED COMPONENT' } } } } };
+  seed.content.landing = [{ id: 'landing-home', slug: 'index', status: 'published', data: { title: 'Custom home', document: customDocument } }];
+  await writeFile(join(fixture, 'seed/seed.json'), JSON.stringify(seed));
+  await run(process.execPath, [astroCli, 'dev', '--background', '--host', '127.0.0.1', '--port', String(developmentPort)]);
+  hasDevServer = true;
+  await waitForServer(developmentOrigin);
+  const customSetup = await jsonRequest(developmentOrigin, '/_emdash/api/setup/dev-bypass?token=1', '');
+  const customCatalog = await jsonRequest(developmentOrigin, '/_emdash/api/plugins/site-builder/catalog', customSetup.token);
+  assert.ok(customCatalog.components.Notice, 'Custom component must be discoverable');
+  assert.equal(customCatalog.configuration.collection, 'landing');
+  const customValidation = await jsonRequest(developmentOrigin, '/_emdash/api/plugins/site-builder/validate', customSetup.token, { document: customDocument });
+  assert.equal(customValidation.success, true);
+  await checkPage(developmentOrigin, '/site', 200, 'CUSTOM REGISTERED COMPONENT');
+  await checkPage(developmentOrigin, '/site/index', 200, 'data-custom="notice"');
+  await checkPage(developmentOrigin, '/index', 404);
+  const draft = await jsonRequest(developmentOrigin, '/_emdash/api/content/landing', customSetup.token, { slug: 'draft', data: { title: 'Draft notice', document: customDocument } });
+  const customPreview = await jsonRequest(developmentOrigin, '/_emdash/api/plugins/site-builder/preview', customSetup.token, { id: draft.item.id });
+  assert.ok(customPreview.url.startsWith('/draft/view/'));
+  await checkPage(developmentOrigin, '/site/draft', 404);
+  await checkPage(developmentOrigin, `/draft/view/${draft.item.id}`, 404);
+  const customPreviewPage = await checkPage(developmentOrigin, customPreview.url, 200, 'CUSTOM REGISTERED COMPONENT');
+  assert.match(customPreviewPage.response.headers.get('cache-control'), /no-store/);
+  // The save hook must use the extended catalog on the configured collection.
+  const invalidCustom = await fetch(new URL('/_emdash/api/content/landing', developmentOrigin), {
+    method: 'POST', headers: { Authorization: `Bearer ${customSetup.token}`, 'Content-Type': 'application/json' }, body: JSON.stringify({ slug: 'invalid-custom', data: { title: 'Invalid', document: { version: 1, spec: { root: 'notice', elements: { notice: { type: 'Notice', props: { text: 123 } } } } } } }),
+  });
+  assert.equal(invalidCustom.status, 422);
+  await run(process.execPath, [astroCli, 'dev', 'stop']);
+  hasDevServer = false;
+  await run(process.execPath, [astroCli, 'build']);
+  productionServer = spawn(process.execPath, ['dist/server/entry.mjs'], { cwd: fixture, env: { ...environment, HOST: '127.0.0.1', PORT: String(productionPort) }, stdio: ['ignore', 'pipe', 'pipe'] });
+  await waitForServer(productionOrigin);
+  await checkPage(productionOrigin, '/site', 200, 'CUSTOM REGISTERED COMPONENT');
+  await checkPage(productionOrigin, '/site/draft', 404);
+  await checkPage(productionOrigin, customPreview.url, 200, 'CUSTOM REGISTERED COMPONENT');
+  await checkPage(productionOrigin, '/existing', 200, 'Existing host route');
+  console.log('PASS: custom component, collection, home slug, public and preview paths work in an independently installed dev and production host');
+
 } finally {
   if (hasDevServer) await run(process.execPath, [join(fixture, 'node_modules/astro/bin/astro.mjs'), 'dev', 'stop']).catch(() => {});
   if (productionServer && productionServer.exitCode === null) {

@@ -1,6 +1,10 @@
 import { JSONUIProvider, Renderer, defineRegistry } from '@json-render/react';
 import { PortableContent } from './portable-content.tsx';
 import { catalog } from './catalog.ts';
+import { componentContract, type ComponentExtensions } from './extensions.ts';
+import { defineCatalog } from '@json-render/core';
+import { schema } from '@json-render/react/schema';
+import { validateResolvedSpec } from './document.ts';
 import { themeSchema, type PageDocument, type PageState } from './document.ts';
 import { safeUrl } from './safe-url.ts';
 
@@ -30,10 +34,15 @@ const { registry } = defineRegistry(catalog, {
   },
 });
 
-type Props = { document: PageDocument; state: PageState };
+type Props = { document: PageDocument; state: PageState; components?: ComponentExtensions };
 
 /** One React tree preserves context across all components; Astro server-renders it. */
-export function SiteRenderer({ document, state }: Props) {
+export function SiteRenderer({ document, state, components = {} }: Props) {
+  componentContract(components);
+  validateResolvedSpec(document, state, components);
+  const customCatalog = defineCatalog(schema, { components: Object.fromEntries(Object.entries(components).map(([name, value]) => [name, { props: value.props, description: value.description, ...(value.container ? { slots: ['default'] } : {}) }])), actions: {} });
+  const custom = defineRegistry(customCatalog, { components: Object.fromEntries(Object.entries(components).map(([name, value]) => [name, (context: { props: Record<string, unknown>; children?: import('react').ReactNode }) => { const Component = value.component; return <Component props={context.props} children={context.children} />; }])) });
+  const combinedRegistry = { ...registry, ...custom.registry };
   const theme = themeSchema.parse(document.theme ?? {});
   const radius = { none: '0', sm: '0.5rem', lg: '1.5rem' }[theme.radius];
   const style = {
@@ -44,8 +53,8 @@ export function SiteRenderer({ document, state }: Props) {
     fontFamily: theme.font === 'serif' ? 'Georgia, "Noto Serif JP", serif' : 'Inter, "Noto Sans JP", system-ui, sans-serif',
   };
   return <div className="site" style={style}>
-    <JSONUIProvider registry={registry} initialState={state}>
-      <Renderer spec={document.spec} registry={registry} />
+    <JSONUIProvider registry={combinedRegistry} initialState={state}>
+      <Renderer spec={document.spec} registry={combinedRegistry} />
     </JSONUIProvider>
   </div>;
 }

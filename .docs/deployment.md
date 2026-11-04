@@ -2,7 +2,7 @@
 
 ## 設定
 
-1. `apps/example/wrangler.jsonc`を`apps/example/wrangler.production.jsonc`へコピーする。後者はGit管理外。
+1. `apps/web/wrangler.jsonc`を`apps/web/wrangler.production.jsonc`へコピーする。後者はGit管理外。
 2. 自分のWorker名、カスタムドメインの`routes`、`EMDASH_SITE_URL`、D1のdatabase_name/database_id、R2のbucket_name、SESSION用KVのidを設定する。公開設定のゼロのIDと`cms.example.com`はプレースホルダー。
 3. WranglerでCloudflareへログインし、対象アカウントとリソースを確認する。必要なら非公開設定にaccount_idを指定する。
 4. `EMDASH_PREVIEW_SECRET`と`EMDASH_ENCRYPTION_KEY`を、対象WorkerのSecretsへ登録する。値をソースやログへ書かない。
@@ -19,7 +19,7 @@ vp run build
 vp run deploy:production
 ```
 
-`deploy:production`は非公開設定があることを先に確認し、その設定でCloudflare用にビルド・デプロイする。出力は`apps/example/dist-cloudflare`。Node用ビルドとは分離される。
+`deploy:production`は非公開設定があることを先に確認し、その設定でCloudflare用にビルド・デプロイする。出力は`apps/web/dist-cloudflare`。Node用ビルドとは分離される。
 `vp run build:cloudflare`だけを実行すると公開の設定例でビルドする。これはデプロイしない。
 Cloudflare用ビルドではローカル`.env`を読み込まない。プレビュー用・暗号化用のキーは実行時のWorker Secretsで提供する。
 

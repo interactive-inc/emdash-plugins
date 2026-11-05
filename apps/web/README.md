@@ -14,9 +14,9 @@ vp run seed
 portless
 ```
 
-- 公開サイト: https://emdash-home.open.localhost/
-- 管理画面: https://emdash-home.open.localhost/_emdash/admin
-- MCP: https://emdash-home.open.localhost/_emdash/api/mcp
+- 公開サイト: https://emdash-plugins.localhost/
+- 管理画面: https://emdash-plugins.localhost/_emdash/admin
+- MCP: https://emdash-plugins.localhost/_emdash/api/mcp
 
 `setup:local`は`apps/web/.data/`と、未設定の場合にランダムなプレビュー署名キーを`apps/web/.env`に用意します。
 `seed`はサンプルのホームとガイドを作ります。同じslugの既存ページは上書きしません。
@@ -30,12 +30,12 @@ Portlessから起動すると、AstroはPortlessの子プロセスとして動�
 ## チャットから操作する
 
 MCPクライアントに上記接続先を登録し、EmDashのOAuth認可を行います。外部サービスからローカルURLには接続できないため、その場合は公開環境のHTTPS URLが必要です。
-EmDash管理画面のPluginsでSite BuilderのMCPツールを有効にします。プラグインのツール用に`mcp:tools:site-builder`、コンテンツ用に必要な`content:read` / `content:write`などを許可します。ユーザーロールの権限も別途適用されます。
+EmDash管理画面のPluginsでBuilderのMCPツールを有効にします。プラグインのツール用に`mcp:tools:builder`、コンテンツ用に必要な`content:read` / `content:write`などを許可します。ユーザーロールの権限も別途適用されます。
 
-1. `site-builder__catalog`: 使用できる部品とJSON仕様を読む。
-2. `site-builder__validate`: ページJSONを検証する。
+1. `builder__catalog`: 使用できる部品とJSON仕様を読む。
+2. `builder__validate`: ページJSONを検証する。
 3. `content_create`: `collection: "pages"`に下書きを作る。
-4. `site-builder__preview`: 保存したページIDからプレビューURLを発行する。
+4. `builder__preview`: 保存したページIDからプレビューURLを発行する。
 5. `content_get`で最新の`_rev`を取得し、`content_publish`で公開する。
 6. 変更時も`content_get` → `content_update` → プレビュー → `content_publish`の順で操作する。
 
@@ -122,6 +122,6 @@ Cloudflareでは`astro.config.cloudflare.mjs`と、Git管理外の`wrangler.prod
 
 EmDashの更新は公式の`upgrade-emdash`で依存を更新し、生成された`.emdash/UPGRADE.md`の指示に従います。
 DB変更を含む更新は、更新したアプリの起動前に復旧可能なバックアップを用意します。
-独自プラグインはモノレポの`packages/site-builder/`にあり、更新時は上記の検査とMCPの動作確認を行います。
+独自プラグインはモノレポの`packages/emdash-plugins/`にあり、更新時は上記の検査とMCPの動作確認を行います。
 
 [EmDash公式ドキュメント](https://docs.emdashcms.com/) · [json-render](https://json-render.dev/docs)

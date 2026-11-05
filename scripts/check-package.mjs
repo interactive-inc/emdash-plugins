@@ -14,7 +14,7 @@ import { setTimeout as delay } from 'node:timers/promises';
 const executeFile = promisify(execFile);
 const repository = dirname(dirname(fileURLToPath(import.meta.url)));
 const web = join(repository, 'apps/web');
-const fixture = await mkdtemp(join(tmpdir(), 'open-emdash-package-'));
+const fixture = await mkdtemp(join(tmpdir(), 'emdash-plugins-package-'));
 const previewSecret = randomBytes(32).toString('hex');
 const inheritedEnvironment = Object.fromEntries(Object.entries(process.env).filter(([name]) => !name.startsWith('EMDASH_') && !['SITE_URL', 'PREVIEW_SECRET', 'AUTH_SECRET'].includes(name)));
 const environment = { ...inheritedEnvironment, EMDASH_DATABASE_URL: 'file:./.data/emdash.db', EMDASH_PREVIEW_SECRET: previewSecret };
@@ -62,11 +62,11 @@ async function jsonRequest(origin, path, token, body = null) {
   return (await response.json()).data;
 }
 try {
-  await run('vp', ['pm', 'pack', '--filter', '@open-emdash/site-builder', '--pack-destination', fixture], repository);
-  const manifest = JSON.parse(await readFile(join(repository, 'packages/site-builder/package.json'), 'utf8'));
-  const archive = join(fixture, `open-emdash-site-builder-${manifest.version}.tgz`);
+  await run('vp', ['pm', 'pack', '--filter', '@interactive-inc/emdash-plugins', '--pack-destination', fixture], repository);
+  const manifest = JSON.parse(await readFile(join(repository, 'packages/emdash-plugins/package.json'), 'utf8'));
+  const archive = join(fixture, `interactive-inc-emdash-plugins-${manifest.version}.tgz`);
   const contents = await run('tar', ['-tzf', archive]);
-  for (const file of ['dist/plugin.js', 'dist/plugin.d.ts', 'dist/runtime.js', 'dist/server/page-response.js', 'src/pages/[...slug].astro', 'src/pages/preview/[id].astro', 'src/styles/site.css', 'src/admin.tsx']) {
+  for (const file of ['dist/builder/plugin.js', 'dist/builder/plugin.d.ts', 'dist/builder/runtime.js', 'dist/builder/server/page-response.js', 'src/builder/pages/[...slug].astro', 'src/builder/pages/preview/[id].astro', 'src/builder/styles/site.css', 'src/builder/admin.tsx', 'LICENSE', 'README.md']) {
     assert.ok(contents.includes(`package/${file}`), `Missing packaged file: ${file}`);
   }
   assert.doesNotMatch(contents, /\/(?:\.env(?:\.|\/|$)|\.data\/|\.astro\/|node_modules\/|apps\/|tests\/)/m);
@@ -76,9 +76,9 @@ try {
   console.log('PASS: npm archive includes its runtime, types, routes, admin and CSS, and excludes local state');
 
   const webManifest = JSON.parse(await readFile(join(web, 'package.json'), 'utf8'));
-  const dependencies = { '@open-emdash/site-builder': `file:${archive}`, zod: manifest.dependencies.zod };
+  const dependencies = { '@interactive-inc/emdash-plugins': `file:${archive}`, zod: manifest.dependencies.zod };
   for (const name of Object.keys(webManifest.dependencies)) {
-    if (name === '@open-emdash/site-builder') continue;
+    if (name === '@interactive-inc/emdash-plugins') continue;
     const installed = JSON.parse(await readFile(join(web, 'node_modules', name, 'package.json'), 'utf8'));
     dependencies[name] = installed.version;
   }
@@ -97,9 +97,9 @@ Astro.response.headers.set('Content-Security-Policy', "frame-ancestors 'none'");
 ---
 <html><body><h1>Existing host route</h1></body></html>`);
   await run('vp', ['install', '--prefer-offline']);
-  const installedPlugin = await realpath(join(fixture, 'node_modules/@open-emdash/site-builder'));
+  const installedPlugin = await realpath(join(fixture, 'node_modules/@interactive-inc/emdash-plugins'));
   assert.ok(!installedPlugin.startsWith(repository), 'Consumer must use the archive, not a workspace link');
-  await run(process.execPath, ['--input-type=module', '-e', `import { siteBuilder } from '@open-emdash/site-builder'; import { validateDocument } from '@open-emdash/site-builder/document'; if (siteBuilder().id !== 'site-builder' || validateDocument(null).success) process.exit(1);`]);
+  await run(process.execPath, ['--input-type=module', '-e', `import { builderPlugin } from '@interactive-inc/emdash-plugins/builder'; import { validateDocument } from '@interactive-inc/emdash-plugins/builder/document'; if (builderPlugin().id !== 'builder' || validateDocument(null).success) process.exit(1);`]);
   console.log('PASS: a separate project installs and imports the package without workspace sources');
 
   const developmentPort = await freePort();
@@ -113,7 +113,7 @@ Astro.response.headers.set('Content-Security-Policy', "frame-ancestors 'none'");
   await checkPage(developmentOrigin, '/existing', 200, 'Existing host route');
   const setup = await jsonRequest(developmentOrigin, '/_emdash/api/setup/dev-bypass?token=1', '');
   const home = await jsonRequest(developmentOrigin, '/_emdash/api/content/pages/home', setup.token);
-  const preview = await jsonRequest(developmentOrigin, '/_emdash/api/plugins/site-builder/preview', setup.token, { id: home.item.id });
+  const preview = await jsonRequest(developmentOrigin, '/_emdash/api/plugins/builder/preview', setup.token, { id: home.item.id });
   // Seed real EmDash users/PATs only in this disposable SQLite host. Requests
   // still go through EmDash authentication, RBAC and plugin route dispatch.
   const roleTokens = JSON.parse(await run(process.execPath, ['--input-type=module', '-e', `
@@ -127,14 +127,14 @@ Astro.response.headers.set('Content-Security-Policy', "frame-ancestors 'none'");
       const token = 'ec_pat_' + randomBytes(32).toString('base64url');
       const now = new Date().toISOString();
       db.prepare('INSERT INTO users (id, email, name, role, email_verified, created_at, updated_at) VALUES (?, ?, ?, ?, 1, ?, ?)').run(id, id + '@example.test', id, role, now, now);
-      db.prepare('INSERT INTO _emdash_api_tokens (id, name, token_hash, prefix, user_id, scopes) VALUES (?, ?, ?, ?, ?, ?)').run(id, id, createHash('sha256').update(token).digest('base64url'), token.slice(0, 15), id, JSON.stringify(['admin', 'content:read', 'content:write', 'mcp:tools:site-builder']));
+      db.prepare('INSERT INTO _emdash_api_tokens (id, name, token_hash, prefix, user_id, scopes) VALUES (?, ?, ?, ?, ?, ?)').run(id, id, createHash('sha256').update(token).digest('base64url'), token.slice(0, 15), id, JSON.stringify(['admin', 'content:read', 'content:write', 'mcp:tools:builder']));
       tokens.push({ role, token });
     }
     db.close();
     console.log(JSON.stringify(tokens));
   `]));
   for (const { role, token } of roleTokens) {
-    const response = await fetch(new URL('/_emdash/api/plugins/site-builder/preview', developmentOrigin), {
+    const response = await fetch(new URL('/_emdash/api/plugins/builder/preview', developmentOrigin), {
       method: 'POST', headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' }, body: JSON.stringify({ id: home.item.id }),
     });
     assert.equal(response.status, role < 20 ? 403 : 200, `Unexpected preview permission for role ${role}`);
@@ -181,10 +181,10 @@ Astro.response.headers.set('Content-Security-Policy', "frame-ancestors 'none'");
   // points through a packaged install, including production bundling.
   const configured = { collection: 'landing', basePath: '/site', previewPath: '/draft/view', homeSlug: 'index', componentsModule: './src/components.tsx' };
   const configSource = await readFile(join(fixture, 'astro.config.mjs'), 'utf8');
-  await writeFile(join(fixture, 'astro.config.mjs'), configSource.replace('siteBuilderPages()', `siteBuilderPages(${JSON.stringify(configured)})`).replace('siteBuilder()', `siteBuilder(${JSON.stringify(configured)})`));
+  await writeFile(join(fixture, 'astro.config.mjs'), configSource.replace('builderIntegration()', `builderIntegration(${JSON.stringify(configured)})`).replace('builderPlugin()', `builderPlugin(${JSON.stringify(configured)})`));
   await writeFile(join(fixture, 'src/components.tsx'), `
     import { z } from 'zod';
-    import { defineComponent } from '@open-emdash/site-builder/extensions';
+    import { defineComponent } from '@interactive-inc/emdash-plugins/builder/extensions';
     export default { Notice: defineComponent({ props: z.object({ text: z.string().max(120) }), description: 'A host notice', component: ({ props }) => <aside data-custom="notice">{props.text}</aside> }) };
   `);
   const seed = JSON.parse(await readFile(join(fixture, 'seed/seed.json'), 'utf8'));
@@ -196,16 +196,16 @@ Astro.response.headers.set('Content-Security-Policy', "frame-ancestors 'none'");
   hasDevServer = true;
   await waitForServer(developmentOrigin);
   const customSetup = await jsonRequest(developmentOrigin, '/_emdash/api/setup/dev-bypass?token=1', '');
-  const customCatalog = await jsonRequest(developmentOrigin, '/_emdash/api/plugins/site-builder/catalog', customSetup.token);
+  const customCatalog = await jsonRequest(developmentOrigin, '/_emdash/api/plugins/builder/catalog', customSetup.token);
   assert.ok(customCatalog.components.Notice, 'Custom component must be discoverable');
   assert.equal(customCatalog.configuration.collection, 'landing');
-  const customValidation = await jsonRequest(developmentOrigin, '/_emdash/api/plugins/site-builder/validate', customSetup.token, { document: customDocument });
+  const customValidation = await jsonRequest(developmentOrigin, '/_emdash/api/plugins/builder/validate', customSetup.token, { document: customDocument });
   assert.equal(customValidation.success, true);
   await checkPage(developmentOrigin, '/site', 200, 'CUSTOM REGISTERED COMPONENT');
   await checkPage(developmentOrigin, '/site/index', 200, 'data-custom="notice"');
   await checkPage(developmentOrigin, '/index', 404);
   const draft = await jsonRequest(developmentOrigin, '/_emdash/api/content/landing', customSetup.token, { slug: 'draft', data: { title: 'Draft notice', document: customDocument } });
-  const customPreview = await jsonRequest(developmentOrigin, '/_emdash/api/plugins/site-builder/preview', customSetup.token, { id: draft.item.id });
+  const customPreview = await jsonRequest(developmentOrigin, '/_emdash/api/plugins/builder/preview', customSetup.token, { id: draft.item.id });
   assert.ok(customPreview.url.startsWith('/draft/view/'));
   await checkPage(developmentOrigin, '/site/draft', 404);
   await checkPage(developmentOrigin, `/draft/view/${draft.item.id}`, 404);

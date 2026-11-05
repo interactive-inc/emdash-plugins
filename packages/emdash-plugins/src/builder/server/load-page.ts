@@ -1,4 +1,4 @@
-import { resolveOptions, type SiteBuilderOptions } from '../options.ts';
+import { resolveOptions, type BuilderOptions } from '../options.ts';
 import type { ComponentExtensions } from '../extensions.ts';
 import { getEmDashCollection, getEmDashEntry } from 'emdash';
 import { validateDocument, validateResolvedSpec, type PageDocument, type PageState } from '../document.ts';
@@ -14,7 +14,7 @@ export type LoadedPage = {
 };
 
 /** All reads go through EmDash's published-entry and scoped preview checks. */
-export async function loadPage(identifier: string, input: SiteBuilderOptions = {}, components: ComponentExtensions = {}): Promise<LoadedPage | null> {
+export async function loadPage(identifier: string, input: BuilderOptions = {}, components: ComponentExtensions = {}): Promise<LoadedPage | null> {
   const options = resolveOptions(input);
   const { entry, error, isPreview } = await getEmDashEntry(options.collection, identifier);
   if (error) throw new Error('Could not load page');

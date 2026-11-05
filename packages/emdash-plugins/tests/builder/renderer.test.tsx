@@ -1,8 +1,8 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { renderToStaticMarkup } from 'react-dom/server';
-import { SiteRenderer } from '../src/renderer.tsx';
-import { validateDocument } from '../src/document.ts';
+import { SiteRenderer } from '../../src/builder/renderer.tsx';
+import { validateDocument } from '../../src/builder/document.ts';
 
 test('SSR resolves text, repeated data and links while escaping HTML', () => {
   const result = validateDocument({ version: 1, data: { posts: { collection: 'posts' } }, spec: { root: 'grid', elements: {

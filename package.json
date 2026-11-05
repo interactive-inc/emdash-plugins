@@ -1,5 +1,5 @@
 {
-  "name": "open-emdash-home",
+  "name": "emdash-plugins",
   "private": true,
   "type": "module",
   "engines": {
@@ -7,22 +7,22 @@
   },
   "packageManager": "pnpm@12.15.0",
   "scripts": {
-    "dev": "vp run --filter @open-emdash/web dev",
-    "dev:stop": "vp run --filter @open-emdash/web dev:stop",
-    "dev:status": "vp run --filter @open-emdash/web dev:status",
-    "build:plugin": "vp run --filter @open-emdash/site-builder build",
-    "build": "vp run build:plugin && vp run --filter @open-emdash/web build",
-    "build:cloudflare": "vp run build:plugin && vp run --filter @open-emdash/web build:cloudflare",
+    "dev": "vp run --filter web dev",
+    "dev:stop": "vp run --filter web dev:stop",
+    "dev:status": "vp run --filter web dev:status",
+    "build:plugin": "vp run --filter @interactive-inc/emdash-plugins build",
+    "build": "vp run build:plugin && vp run --filter web build",
+    "build:cloudflare": "vp run build:plugin && vp run --filter web build:cloudflare",
     "deploy:production": "node scripts/deploy-production.mjs",
-    "check": "vp run build:plugin && vp run --filter @open-emdash/site-builder --filter @open-emdash/web check",
-    "test": "vp run build:plugin && vp run --filter @open-emdash/site-builder --filter @open-emdash/web test",
+    "check": "vp run build:plugin && vp run --filter @interactive-inc/emdash-plugins --filter web check",
+    "test": "vp run build:plugin && vp run --filter @interactive-inc/emdash-plugins --filter web test",
     "verify": "vp run check && vp run test && vp run build",
     "test:package": "node scripts/check-package.mjs",
-    "setup:local": "vp run --filter @open-emdash/web setup:local",
-    "seed": "vp run --filter @open-emdash/web seed",
-    "smoke": "vp run --filter @open-emdash/web smoke",
-    "preview": "vp run --filter @open-emdash/web preview",
-    "start": "vp run --filter @open-emdash/web start"
+    "setup:local": "vp run --filter web setup:local",
+    "seed": "vp run --filter web seed",
+    "smoke": "vp run --filter web smoke",
+    "preview": "vp run --filter web preview",
+    "start": "vp run --filter web start"
   },
   "devDependencies": {
     "@types/node": "^24.0.0",

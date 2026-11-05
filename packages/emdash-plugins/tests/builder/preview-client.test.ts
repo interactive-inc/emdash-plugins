@@ -1,6 +1,6 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { getPagePreview, getPreviewConfiguration } from '../src/admin/get-page-preview.ts';
+import { getPagePreview, getPreviewConfiguration } from '../../src/builder/admin/get-page-preview.ts';
 
 test('preview client sends the native request header and accepts only the configured local preview route', async () => {
   const original = globalThis.fetch;

@@ -3,8 +3,8 @@ import cloudflare from '@astrojs/cloudflare';
 import react from '@astrojs/react';
 import emdash from 'emdash/astro';
 import { d1, r2 } from '@emdash-cms/cloudflare';
-import { siteBuilderPages } from '@open-emdash/site-builder/astro';
-import { siteBuilder } from '@open-emdash/site-builder';
+import { builderIntegration } from '@interactive-inc/emdash-plugins/builder/astro';
+import { builderPlugin } from '@interactive-inc/emdash-plugins/builder';
 
 export default defineConfig({
   output: 'server',
@@ -16,11 +16,11 @@ export default defineConfig({
   devToolbar: { enabled: false },
   integrations: [
     react(),
-    siteBuilderPages(),
+    builderIntegration(),
     emdash({
       database: d1({ binding: 'DB' }),
       storage: r2({ binding: 'MEDIA' }),
-      plugins: [siteBuilder()],
+      plugins: [builderPlugin()],
       toolbar: false,
     }),
   ],

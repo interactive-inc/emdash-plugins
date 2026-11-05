@@ -1,8 +1,8 @@
 ---
-import options from 'virtual:site-builder/config';
-import components from 'virtual:site-builder/extensions';
+import options from 'virtual:emdash-plugins/builder/config';
+import components from 'virtual:emdash-plugins/builder/extensions';
 import PageShell from '../../PageShell.astro';
-import { pageResponse } from '@open-emdash/site-builder/server';
+import { pageResponse } from '@interactive-inc/emdash-plugins/builder/server';
 const result = await pageResponse(Astro.params.id ?? '', options, components);
 // A preview URL must actually authorize this entry; a guessed ID cannot act as a draft URL.
 const page = result.page?.isPreview ? result.page : null;

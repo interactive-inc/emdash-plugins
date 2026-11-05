@@ -1,9 +1,9 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { renderToStaticMarkup } from 'react-dom/server';
-import { getEditorPageId } from '../src/admin/get-editor-page-id.ts';
-import { PagePreviewFrame } from '../src/admin/page-preview-frame.tsx';
-import { ManagedPageField } from '../src/admin/managed-page-field.tsx';
+import { getEditorPageId } from '../../src/builder/admin/get-editor-page-id.ts';
+import { PagePreviewFrame } from '../../src/builder/admin/page-preview-frame.tsx';
+import { ManagedPageField } from '../../src/builder/admin/managed-page-field.tsx';
 
 test('page preview targets only the saved Pages entry in the native editor', () => {
   assert.equal(getEditorPageId('/_emdash/admin/content/pages/page-id'), 'page-id');

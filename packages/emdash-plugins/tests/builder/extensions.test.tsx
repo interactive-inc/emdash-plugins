@@ -2,11 +2,11 @@ import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { renderToStaticMarkup } from 'react-dom/server';
 import { z } from 'zod';
-import { defineComponent, componentContract } from '../src/extensions.ts';
-import { validateDocument, validateResolvedSpec } from '../src/document.ts';
-import { SiteRenderer } from '../src/renderer.tsx';
-import { resolveOptions } from '../src/options.ts';
-import { getEditorPageId } from '../src/admin/get-editor-page-id.ts';
+import { defineComponent, componentContract } from '../../src/builder/extensions.ts';
+import { validateDocument, validateResolvedSpec } from '../../src/builder/document.ts';
+import { SiteRenderer } from '../../src/builder/renderer.tsx';
+import { resolveOptions } from '../../src/builder/options.ts';
+import { getEditorPageId } from '../../src/builder/admin/get-editor-page-id.ts';
 
 const components = { Notice: defineComponent({ props: z.object({ text: z.string().max(80) }), description: 'A notice', component: ({ props }) => <aside>{props.text}</aside> }) };
 const input = { version: 1, spec: { root: 'notice', elements: { notice: { type: 'Notice', props: { text: { $state: '/page/title' } } } } } };

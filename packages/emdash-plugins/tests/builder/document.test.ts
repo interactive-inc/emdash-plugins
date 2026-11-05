@@ -1,7 +1,7 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { validateDocument, validateResolvedSpec } from '../src/document.ts';
-import { safeUrl } from '../src/safe-url.ts';
+import { validateDocument, validateResolvedSpec } from '../../src/builder/document.ts';
+import { safeUrl } from '../../src/builder/safe-url.ts';
 
 const pageState = { page: { title: 'A real title', description: '', slug: 'home' }, data: {} };
 const minimal = () => ({ version: 1, spec: { root: 'heading', elements: { heading: { type: 'Heading', props: { text: { $state: '/page/title' }, level: 'h1' } } } } });

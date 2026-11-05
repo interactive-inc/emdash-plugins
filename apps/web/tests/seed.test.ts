@@ -1,15 +1,15 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { readFile } from 'node:fs/promises';
-import { validateDocument, validateResolvedSpec } from '@open-emdash/site-builder/document';
+import { validateDocument, validateResolvedSpec } from '@interactive-inc/emdash-plugins/builder/document';
 
 const seed = JSON.parse(await readFile(new URL('../seed/seed.json', import.meta.url), 'utf8'));
 
 test('the page editor presents a preview instead of editable internal fields', () => {
   const fields = seed.collections.find((collection: { slug: string }) => collection.slug === 'pages').fields;
-  assert.equal(fields.find((field: { slug: string }) => field.slug === 'document').widget, 'site-builder:page-preview');
+  assert.equal(fields.find((field: { slug: string }) => field.slug === 'document').widget, 'builder:page-preview');
   for (const name of ['title', 'description']) {
-    assert.equal(fields.find((field: { slug: string }) => field.slug === name).widget, 'site-builder:managed');
+    assert.equal(fields.find((field: { slug: string }) => field.slug === name).widget, 'builder:managed');
   }
 });
 

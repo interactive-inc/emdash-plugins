@@ -1,12 +1,20 @@
-# @open-emdash/site-builder
+# @interactive-inc/emdash-plugins
+
+Interactive Inc.のEmDashプラグイン集です。プラグインごとにサブパスで読み込みます。
+
+| サブパス | 内容 |
+| --- | --- |
+| `@interactive-inc/emdash-plugins/builder` | チャットで作るjson-renderページビルダー |
+
+## builder
+
 
 EmDashの認証・コンテンツ管理・公開管理を使い、MCPからjson-renderのページを作るネイティブプラグインです。
 公開ページと管理画面内のプレビューを、同じAstro + Reactの描画処理で表示します。
 
 ## 導入
 
-npmにはまだ公開していません。現在のサンプルは`workspace:*`でプラグインを参照します。
-公開後は、EmDashプロジェクトへ`vp add @open-emdash/site-builder`で組み込めます。
+EmDashプロジェクトへ`vp add @interactive-inc/emdash-plugins`で追加し、`@interactive-inc/emdash-plugins/builder`から読み込みます。このリポジトリのサンプルは`workspace:*`で参照します。
 通常の開発に圧縮ファイルは不要です。別プロジェクトへの導入検証時だけ、一時フォルダー内で生成・利用します。
 
 対応対象はAstro 7.4.2以降の7系、EmDash 1.3.1以降の1系、React/React DOM 19.2.4以降の19系です。検証済みの組み合わせはAstro 7.4.2 + EmDash 1.3.1です。
@@ -16,14 +24,14 @@ EmDashとCloudflareツールが固定している間接依存の修正版を使�
 
 ```js
 // astro.config.mjs — 既存のadapter、database、storage設定を維持する
-import { siteBuilder } from '@open-emdash/site-builder';
-import { siteBuilderPages } from '@open-emdash/site-builder/astro';
+import { builderPlugin } from '@interactive-inc/emdash-plugins/builder';
+import { builderIntegration } from '@interactive-inc/emdash-plugins/builder/astro';
 
-// integrationsにsiteBuilderPages()を追加
-// emdash({ ...既存設定, plugins: [...既存プラグイン, siteBuilder()] })
+// integrationsにbuilderIntegration()を追加
+// emdash({ ...既存設定, plugins: [...既存プラグイン, builderPlugin()] })
 ```
 
-`siteBuilderPages()`は`/[...slug]`と`/preview/[id]`を登録し、描画・CSS・プレビュー・レスポンス保護を提供します。
+`builderIntegration()`は`/[...slug]`と`/preview/[id]`を登録し、描画・CSS・プレビュー・レスポンス保護を提供します。
 ルート全体をこのビルダーで表示したい場合に明示的に追加します。既存のcatch-allルートがあるサイトでは両方を登録せず、公開ページの所有範囲を先に決めてください。
 ホストが設定したCSPなどのレスポンスヘッダーは上書きしません。
 
@@ -35,13 +43,13 @@ import { siteBuilderPages } from '@open-emdash/site-builder/astro';
 
 - `title`: string、必須
 - `description`: text
-- `document`: json、必須、widget: `site-builder:page-preview`
+- `document`: json、必須、widget: `builder:page-preview`
 - supports: `drafts`, `revisions`, `preview`。URL pattern: `/{slug}`
 
 `slug: "home"`がトップページです。ほかは`/{slug}`になります。
 これらのフィールドはEmDashの管理画面または標準MCPのスキーマ操作で用意できます。既存DBへサンプルコンテンツを一括投入する必要はありません。
 
-`document.widget`に`site-builder:page-preview`を指定すると、EmDash標準のフィールド拡張でJSON入力欄を大きなプレビューに置き換えます。`title`と`description`には`site-builder:managed`を指定し、チャットで管理する値を通常画面の入力欄から隠せます。保存データ・検証・APIからの更新は維持されます。既存サイトでは標準のフィールド更新APIでwidgetだけを設定してください。
+`document.widget`に`builder:page-preview`を指定すると、EmDash標準のフィールド拡張でJSON入力欄を大きなプレビューに置き換えます。`title`と`description`には`builder:managed`を指定し、チャットで管理する値を通常画面の入力欄から隠せます。保存データ・検証・APIからの更新は維持されます。既存サイトでは標準のフィールド更新APIでwidgetだけを設定してください。
 ページを開くと保存済み下書きをプレビュー枠だけで表示し、保存内容が変わると自動で読み込み直します。公開はEmDash標準の公開ボタンを使います。Site Studioとサイドパネルは追加しません。
 管理画面の部品はReactとブラウザー標準APIだけで取得・URL判定を行い、EmDash内部のTanStack Query / Routerには依存しません。移植可能なプラグインとしてホストの別名設定に依存しない相対importと標準HTML操作部品を使います。
 
@@ -52,21 +60,21 @@ import { siteBuilderPages } from '@open-emdash/site-builder/astro';
 - このキーは設定ファイルやブラウザーへ渡しません。ホスト固有の`astro:env`スキーマ宣言も不要です。
 - ページ編集画面のプレビューは、保存済み下書きが対象です。JSONと内部メタデータを直接編集する欄は表示しません。
 - 署名付きリンクは15分有効で対象の1ページだけを許可します。別記事の下書きへのアクセス権は付与しません。
-- EmDash管理画面のPluginsで、Site BuilderのMCPツールを有効にしてください。MCPクライアントには必要な`content:*`と`mcp:tools:site-builder`のスコープを許可します。
+- EmDash管理画面のPluginsで、BuilderのMCPツールを有効にしてください。MCPクライアントには必要な`content:*`と`mcp:tools:builder`のスコープを許可します。
 
 ## 公開エントリ
 
 | import | 用途 |
 | --- | --- |
-| `@open-emdash/site-builder` | `siteBuilder()`をEmDashのpluginsへ登録 |
-| `@open-emdash/site-builder/astro` | `siteBuilderPages()`で公開・プレビュールートを追加 |
-| `@open-emdash/site-builder/catalog` | 部品カタログ・JSON仕様・MCP向けガイド |
-| `@open-emdash/site-builder/extensions` | `defineComponent()`と独自部品向けの`safeUrl()` |
-| `@open-emdash/site-builder/document` | ページJSONの型・検証 |
-| `@open-emdash/site-builder/renderer` | `SiteRenderer`を独自ページから使用 |
-| `@open-emdash/site-builder/server` | `pageResponse()`で公開/下書きルールに従ってページを解決 |
-| `@open-emdash/site-builder/PageShell.astro` | 完全なHTMLページの標準表示 |
-| `@open-emdash/site-builder/styles.css` | 独自の表示で標準CSSだけを利用 |
+| `@interactive-inc/emdash-plugins/builder` | `builderPlugin()`をEmDashのpluginsへ登録 |
+| `@interactive-inc/emdash-plugins/builder/astro` | `builderIntegration()`で公開・プレビュールートを追加 |
+| `@interactive-inc/emdash-plugins/builder/catalog` | 部品カタログ・JSON仕様・MCP向けガイド |
+| `@interactive-inc/emdash-plugins/builder/extensions` | `defineComponent()`と独自部品向けの`safeUrl()` |
+| `@interactive-inc/emdash-plugins/builder/document` | ページJSONの型・検証 |
+| `@interactive-inc/emdash-plugins/builder/renderer` | `SiteRenderer`を独自ページから使用 |
+| `@interactive-inc/emdash-plugins/builder/server` | `pageResponse()`で公開/下書きルールに従ってページを解決 |
+| `@interactive-inc/emdash-plugins/builder/PageShell.astro` | 完全なHTMLページの標準表示 |
+| `@interactive-inc/emdash-plugins/builder/styles.css` | 独自の表示で標準CSSだけを利用 |
 
 `runtime`、`admin`、`middleware`も公開パスとして存在しますが、EmDash/Astroが読み込むための入口です。
 サーバー用の入口はJavaScriptと型定義をビルドして配布し、React/Astro/CSSはホストのビルドで処理するソースとして配布します。
@@ -78,7 +86,7 @@ import { siteBuilderPages } from '@open-emdash/site-builder/astro';
 
 ## 保存先・URL・部品の拡張
 
-`siteBuilder()`と`siteBuilderPages()`に同じ設定を渡します。省略時は従来どおり`pages`、公開URLは`/`配下、トップページのslugは`home`、プレビューは`/preview`配下です。
+`builderPlugin()`と`builderIntegration()`に同じ設定を渡します。省略時は従来どおり`pages`、公開URLは`/`配下、トップページのslugは`home`、プレビューは`/preview`配下です。
 設定変更前に開発アプリを停止し、変更後に起動し直してください。
 
 ```js
@@ -90,20 +98,20 @@ const builder = {
   homeSlug: 'index',
   componentsModule: './src/site-components.tsx',
 };
-// integrations: [react(), siteBuilderPages(builder), emdash({
-//   ...既存設定, plugins: [siteBuilder(builder)]
+// integrations: [react(), builderIntegration(builder), emdash({
+//   ...既存設定, plugins: [builderPlugin(builder)]
 // })]
 ```
 
 この例では`landing`の`index`を`/site`に、他のslugを`/site/{slug}`に表示します。`landing`には上記と同じtitle・description・documentのフィールドとdrafts・revisions・previewを設定し、EmDashのURL patternも`/site/{slug}`に合わせます。既存コンテンツの自動移行はしません。管理画面のdocumentプレビューも設定したコレクションを対象にします。
-パスにはローカルな固定セグメントだけを指定でき、外部URL、クエリー、相対移動、EmDashの管理用パスは使えません。既存ホストの同じURLを使うルートとの重複は避けてください。1ホストにつきSite Builderは1設定です。
+パスにはローカルな固定セグメントだけを指定でき、外部URL、クエリー、相対移動、EmDashの管理用パスは使えません。既存ホストの同じURLを使うルートとの重複は避けてください。1ホストにつきBuilderは1設定です。
 
 `componentsModule`はホストのAstroプロジェクトルートからのパスです。独自部品を使うホストには`zod`（このパッケージと同じ4系）を直接依存として追加します。
 
 ```tsx
 // src/site-components.tsx
 import { z } from 'zod';
-import { defineComponent } from '@open-emdash/site-builder/extensions';
+import { defineComponent } from '@interactive-inc/emdash-plugins/builder/extensions';
 
 export default {
   Notice: defineComponent({
@@ -121,7 +129,7 @@ export default {
 
 ## 権限と検証
 
-プレビュー発行はEmDashの`content:read_drafts`権限に従います。匿名とSubscriberは拒否し、Contributor・Author・Editor・Adminは許可します。MCPでは加えて`mcp:tools:site-builder`スコープが必要です。管理画面は標準セッションを使います。EmDash 1.3.1のプラグインRESTルートをPATで直接呼ぶ場合は`admin`スコープも必要ですが、ロールによる権限チェックは引き続き適用されます。署名リンクは発行から15分有効で、コレクションと1ページに限定されます。
+プレビュー発行はEmDashの`content:read_drafts`権限に従います。匿名とSubscriberは拒否し、Contributor・Author・Editor・Adminは許可します。MCPでは加えて`mcp:tools:builder`スコープが必要です。管理画面は標準セッションを使います。EmDash 1.3.1のプラグインRESTルートをPATで直接呼ぶ場合は`admin`スコープも必要ですが、ロールによる権限チェックは引き続き適用されます。署名リンクは発行から15分有効で、コレクションと1ページに限定されます。
 
 - `vp run test`: ロール別の発行可否・署名対象・15分の有効期間、独自部品の検証とSSR、設定とエディターの対象を確認します。
 - `vp run smoke`: ローカルAPI/MCPで署名改ざん・期限切れ・別コレクション/ページへの流用・スコープ不足を確認します。`.env`または環境変数に、起動中のサーバーと同じ`EMDASH_PREVIEW_SECRET`が必要です。

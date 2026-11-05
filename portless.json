@@ -1,7 +1,7 @@
 {
   "apps": {
     "apps/web": {
-      "name": "emdash-home.open"
+      "name": "emdash-plugins"
     }
   }
 }

@@ -8,9 +8,9 @@ const optionsSchema = z.strictObject({
   homeSlug: z.string().regex(/^[a-zA-Z0-9_-]+$/).max(200).default('home'),
   componentsModule: z.string().min(1).optional(),
 });
-export type SiteBuilderOptions = z.input<typeof optionsSchema>;
+export type BuilderOptions = z.input<typeof optionsSchema>;
 export type ResolvedOptions = z.output<typeof optionsSchema>;
-export function resolveOptions(options: SiteBuilderOptions = {}): ResolvedOptions {
+export function resolveOptions(options: BuilderOptions = {}): ResolvedOptions {
   const result = optionsSchema.parse(options);
   if (result.basePath.startsWith('/_emdash')) throw new Error('Page routes must be outside EmDash');
   if (result.basePath === result.previewPath || result.basePath.startsWith(`${result.previewPath}/`)) throw new Error('Page and preview routes overlap');

@@ -1,6 +1,7 @@
 import { defineCatalog } from '@json-render/core';
 import { schema } from '@json-render/react/schema';
 import { z } from 'zod';
+import { resolveOptions, type ResolvedOptions } from './options.ts';
 
 const text = z.string().max(20000);
 const spacing = z.enum(['none', 'sm', 'md', 'lg', 'xl']);
@@ -59,7 +60,9 @@ export const componentNames = Object.keys(componentProps);
 export const containerNames = containers;
 export const componentSchemas = Object.fromEntries(Object.entries(componentProps).map(([name, props]) => [name, z.toJSONSchema(props)]));
 
-export const pageGuide = `Build pages as a versioned document: {version:1,spec:{root,elements},theme?,data?}.
+/** The MCP guide reflects the host's configured collection and routes. */
+export function createPageGuide(options: ResolvedOptions = resolveOptions()): string {
+  return `Build pages as a versioned document: {version:1,spec:{root,elements},theme?,data?}.
 Elements are {type,props,children?}. Only the supplied catalog components are allowed.
 Bind props with {"$state":"/page/title"}, {"$state":"/data/article/title"}, or {"$item":"title"} inside a repeat.
 Use {"$template":"/blog/\${slug}"} inside a repeat. A repeat is {statePath:"/data/posts",key:"id"} on a container.
@@ -67,5 +70,9 @@ A visible condition is a boolean or {"$state":"/data/article/image"}.
 Data sources are named EmDash queries: {posts:{collection:"posts",limit:6}} or {article:{collection:"posts",id:"my-slug"}}.
 All data reads use EmDash public/preview rules. A page preview token does not grant access to unrelated drafts.
 Theme: {accent:"#hex",background:"#hex",foreground:"#hex",font:"sans"|"serif",radius:"none"|"sm"|"lg"}.
-Use home as the home-page slug. Other page slugs form their URL. Save using core content_create/content_update on collection pages, with data:{title,description?,document}. Keep _rev for updates and publication.
-Use site-builder validate before saving and preview before publishing. Never store executable code, arbitrary CSS, or fetch URLs.`;
+Use ${options.homeSlug} as the home-page slug. Other page slugs form their URL. Save using core content_create/content_update on collection ${options.collection}, with data:{title,description?,document}. Keep _rev for updates and publication.
+Public pages use the prefix ${options.basePath || '/'}; signed previews use ${options.previewPath}.
+Use the builder validate tool before saving and preview before publishing. Never store executable code, arbitrary CSS, or fetch URLs.`;
+}
+
+export const pageGuide = createPageGuide();

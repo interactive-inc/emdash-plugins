@@ -2,7 +2,7 @@ import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { randomBytes } from 'node:crypto';
 import { verifyPreviewToken } from 'emdash';
-import { createPlugin } from '../src/runtime.ts';
+import { createPlugin } from '../../src/builder/runtime.ts';
 
 const plugin = createPlugin({ collection: 'landing', previewPath: '/draft/view' });
 const handler = plugin.routes!.preview.handler;

@@ -4,7 +4,7 @@ if (!process.env.EMDASH_PREVIEW_SECRET) { try { process.loadEnvFile('.env'); } c
 const previewSecret = process.env.EMDASH_PREVIEW_SECRET;
 assert.ok(previewSecret, 'Set EMDASH_PREVIEW_SECRET to verify expired signed previews');
 
-const origin = process.env.SMOKE_ORIGIN ?? process.env.PORTLESS_URL ?? 'https://emdash-home.open.localhost';
+const origin = process.env.SMOKE_ORIGIN ?? process.env.PORTLESS_URL ?? 'https://emdash-plugins.localhost';
 const hostname = new URL(origin).hostname;
 assert.ok(['localhost', '127.0.0.1', '[::1]'].includes(hostname) || hostname.endsWith('.localhost'), 'Smoke tests only run against a local development server');
 let cookie = '';
@@ -56,27 +56,27 @@ try {
   bearer = setup.token;
   assert.ok(cookie && bearer, 'development session and token');
   const priorTokens = success(await request('/_emdash/api/admin/api-tokens'), 'list test tokens');
-  for (const item of priorTokens.items.filter(item => item.name === 'site-builder-smoke')) {
+  for (const item of priorTokens.items.filter(item => item.name === 'builder-smoke')) {
     await request(`/_emdash/api/admin/api-tokens/${item.id}`, undefined, 'DELETE');
   }
-  success(await request('/_emdash/api/admin/plugins/site-builder/mcp', { enabled: true }, 'PUT'), 'enable declared MCP tools');
+  success(await request('/_emdash/api/admin/plugins/builder/mcp', { enabled: true }, 'PUT'), 'enable declared MCP tools');
   // Plugin tools require their own scope, independently of the core admin scope.
   const originalBearer = bearer;
   bearer = '';
-  const token = success(await request('/_emdash/api/admin/api-tokens', { name: 'site-builder-smoke', scopes: ['content:read', 'content:write', 'mcp:tools:site-builder'] }), 'scoped token');
+  const token = success(await request('/_emdash/api/admin/api-tokens', { name: 'builder-smoke', scopes: ['content:read', 'content:write', 'mcp:tools:builder'] }), 'scoped token');
   bearer = token.token;
   toolTokenId = token.info.id;
   const list = await request('/_emdash/api/mcp', { jsonrpc: '2.0', id: 1, method: 'tools/list', params: {} });
   assert.ok(list.value.result?.tools, JSON.stringify(list.value));
   const tools = list.value.result.tools;
-  const catalog = tools.find(tool => /catalog$/.test(tool.name) && /site.builder/.test(tool.name));
-  const preview = tools.find(tool => /preview$/.test(tool.name) && /site.builder/.test(tool.name));
-  const validate = tools.find(tool => /validate$/.test(tool.name) && /site.builder/.test(tool.name));
+  const catalog = tools.find(tool => tool.name === 'builder__catalog');
+  const preview = tools.find(tool => tool.name === 'builder__preview');
+  const validate = tools.find(tool => tool.name === 'builder__validate');
   assert.ok(catalog && preview && validate, `Missing plugin tools: ${tools.map(tool => tool.name).join(', ')}`);
   await mcp(catalog.name);
   await mcp(validate.name, { document: pageDocument('Valid') });
   bearer = '';
-  const limited = success(await request('/_emdash/api/admin/api-tokens', { name: 'site-builder-smoke-no-plugin-scope', scopes: ['content:read'] }), 'limited token');
+  const limited = success(await request('/_emdash/api/admin/api-tokens', { name: 'builder-smoke-no-plugin-scope', scopes: ['content:read'] }), 'limited token');
   extraTokenIds.push(limited.info.id);
   bearer = limited.token;
   const deniedTool = await request('/_emdash/api/mcp', { jsonrpc: '2.0', id: 2, method: 'tools/call', params: { name: catalog.name, arguments: {} } });
@@ -86,7 +86,7 @@ try {
 
   const invalid = await request('/_emdash/api/content/pages', { slug: 'invalid-smoke', data: { title: 'Invalid', document: { version: 1, spec: { root: 'bad', elements: { bad: { type: 'script', props: {} } } } } } });
   assert.equal(invalid.response.ok, false, 'invalid JSON must not be stored through the core REST API');
-  const unauthorized = await request('/_emdash/api/plugins/site-builder/preview', { id: 'anything' }, 'POST', false);
+  const unauthorized = await request('/_emdash/api/plugins/builder/preview', { id: 'anything' }, 'POST', false);
   assert.equal(unauthorized.response.ok, false, 'anonymous caller cannot mint preview tokens');
   console.log('PASS: core save hook rejects invalid JSON; anonymous preview creation is denied');
 
@@ -109,7 +109,7 @@ try {
   assert.equal((await publicPage(`/preview/${id}`)).response.status, 404);
   const standardPreview = success(await request(`/_emdash/api/content/pages/${id}/preview-url`, {}), 'standard EmDash preview');
   assert.match((await publicPage(standardPreview.url)).value, /FIRST DRAFT/);
-  const previewData = success(await request('/_emdash/api/plugins/site-builder/preview', { id }), 'preview');
+  const previewData = success(await request('/_emdash/api/plugins/builder/preview', { id }), 'preview');
   const draft = await publicPage(previewData.url);
   assert.equal(draft.response.status, 200, 'The signed preview should render the draft');
   assert.match(draft.value, /FIRST DRAFT/);

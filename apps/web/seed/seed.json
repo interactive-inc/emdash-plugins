@@ -27,20 +27,20 @@
           "slug": "title",
           "label": "Title",
           "type": "string",
-          "widget": "site-builder:managed",
+          "widget": "builder:managed",
           "required": true
         },
         {
           "slug": "description",
           "label": "Description",
           "type": "text",
-          "widget": "site-builder:managed"
+          "widget": "builder:managed"
         },
         {
           "slug": "document",
           "label": "ページプレビュー",
           "type": "json",
-          "widget": "site-builder:page-preview",
+          "widget": "builder:page-preview",
           "required": true
         }
       ]

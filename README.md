@@ -1,13 +1,13 @@
-# Open EmDash Home
+# EmDash Plugins
 
-EmDashに、チャットから操作するjson-renderのサイトビルダーを追加するモノレポです。
-EmDash本体は変更せず、ネイティブプラグインとして組み込んでいます。
+Interactive Inc.のEmDashプラグイン集`@interactive-inc/emdash-plugins`のモノレポです。
+EmDash本体は変更せず、ネイティブプラグインとして組み込みます。現在のプラグインは、チャットからjson-renderのページを作る`builder`です。
 
 ```text
-packages/emdash-plugins/  プラグイン・MCP・検証・描画・CSS・プレビュー
-apps/web/          プラグインを利用するAstro + EmDashのサンプル
-scripts/               別プロジェクトへの導入検証
-.docs/                 目的・設計判断・検証状況
+packages/emdash-plugins/  配布パッケージ。プラグインごとにsrc/<name>/を持つ
+apps/web/                 プラグインを利用するAstro + EmDashのサンプル
+scripts/                  別プロジェクトへの導入検証・デプロイ
+.docs/                    設計判断・デプロイ手順
 ```
 
 ## サンプルを動かす
@@ -69,4 +69,4 @@ vp run deploy:production
 
 ## ライセンス
 
-MIT License。詳細は[LICENSE](LICENSE)を参照してください。npmへの公開はまだ行っていません。
+MIT License。詳細は[LICENSE](LICENSE)を参照してください。

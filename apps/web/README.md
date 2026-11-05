@@ -1,6 +1,6 @@
-# Example — Open EmDash Home
+# web — EmDash Pluginsのサンプル
 
-チャットからページとコンテンツを作り、プレビューして公開するサイトです。
+`@interactive-inc/emdash-plugins/builder`を使い、チャットからページとコンテンツを作り、プレビューして公開するサイトです。
 Astro + EmDash + React + json-renderで動作します。EmDash本体は変更していません。
 
 ## ローカルで動かす

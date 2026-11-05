@@ -3,7 +3,8 @@
 ## 構成
 
 - Astro + EmDash + React + json-render。EmDash本体はnpm依存として使い、ネイティブプラグインで拡張する。
-- `packages/emdash-plugins`が検証・部品・MCP拡張・描画・CSS・プレビューを提供し、`apps/web`が利用する。
+- `packages/emdash-plugins`は`@interactive-inc/emdash-plugins`として配布する。プラグインは`src/<name>/`に置き、`./<name>`のサブパスで公開する。`apps/web`が利用する。
+- `builder`プラグインが検証・部品・MCP拡張・描画・CSS・プレビューを提供する。プラグインIDは`builder`で、widget・MCPスコープ・APIルートの名前空間になる。
 - 既定の`pages.document`はバージョン付きJSON。保存先・公開URL・プレビューURL・トップページslugは設定可能。独自部品はホストのコードで登録し、MCP・検証・描画で共用する。保存前と描画前に共通カタログで検証する。
 - GUIではdocumentの入力欄をプレビューへ置換し、チャット管理のタイトル・説明欄を隠す。公開・履歴・認証はEmDash標準。
 - MCPは登録済み部品を組み合わせる。任意のJavaScript・CSS・HTML・fetch先は受け付けない。部品の追加にはコード変更が必要。
@@ -19,4 +20,4 @@
 - `vp run check`、`vp run test`、`vp run build`で型・ユニット・SSR・ビルドを検査する。
 - `vp run test:package`は一時フォルダーの独立ホストでインストール・MCP・公開/下書き・プレビューを検査する。配布ファイルはリポジトリへ残さない。
 - `vp run smoke`は起動中のローカルアプリ専用。公式開発ログインを使うため本番へ実行しない。
-- ライセンスはMIT。npmには未公開。
+- ライセンスはMIT。npmへの公開は`packages/emdash-plugins`で`vp pm publish`を実行する。

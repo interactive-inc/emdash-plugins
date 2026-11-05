@@ -1,6 +1,10 @@
 # @interactive-inc/emdash-plugins
 
-Interactive Inc.のEmDashプラグイン集です。プラグインごとにサブパスで読み込みます。
+Interactive Inc.のEmDashプラグイン集です。1つのパッケージを追加し、プラグインごとのサブパスから読み込みます。
+
+```sh
+vp add @interactive-inc/emdash-plugins
+```
 
 | サブパス | 内容 |
 | --- | --- |
@@ -8,19 +12,15 @@ Interactive Inc.のEmDashプラグイン集です。プラグインごとにサ�
 
 ## builder
 
-
 EmDashの認証・コンテンツ管理・公開管理を使い、MCPからjson-renderのページを作るネイティブプラグインです。
 公開ページと管理画面内のプレビューを、同じAstro + Reactの描画処理で表示します。
 
-## 導入
-
-EmDashプロジェクトへ`vp add @interactive-inc/emdash-plugins`で追加し、`@interactive-inc/emdash-plugins/builder`から読み込みます。このリポジトリのサンプルは`workspace:*`で参照します。
-通常の開発に圧縮ファイルは不要です。別プロジェクトへの導入検証時だけ、一時フォルダー内で生成・利用します。
+### 導入
 
 対応対象はAstro 7.4.2以降の7系、EmDash 1.3.1以降の1系、React/React DOM 19.2.4以降の19系です。検証済みの組み合わせはAstro 7.4.2 + EmDash 1.3.1です。
 既存ホストに`@astrojs/react`の登録とEmDashのlive collection設定が必要です。
 
-EmDashとCloudflareツールが固定している間接依存の修正版を使うため、このリポジトリでは`pnpm-workspace.yaml`にZod 4.6.7 / undici 7.30.1のoverridesを指定しています。別ホストへの導入時も同等の設定と依存監査が必要です。パッケージのインストールだけではホスト側の間接依存は置き換わりません。
+EmDash 1.3.1とCloudflareツールは、脆弱性修正前のZod・undiciを間接依存として固定しています。ホスト側でZod 4.6.7以降・undici 7.30.1以降へのoverridesを設定してください。パッケージのインストールだけではホスト側の間接依存は置き換わりません。
 
 ```js
 // astro.config.mjs — 既存のadapter、database、storage設定を維持する
@@ -35,8 +35,8 @@ import { builderIntegration } from '@interactive-inc/emdash-plugins/builder/astr
 ルート全体をこのビルダーで表示したい場合に明示的に追加します。既存のcatch-allルートがあるサイトでは両方を登録せず、公開ページの所有範囲を先に決めてください。
 ホストが設定したCSPなどのレスポンスヘッダーは上書きしません。
 
-このバージョンは`pages`コレクションの`document`フィールドを使います。
-既存のEmDashサイトの`pages`が通常の記事ページとして使われている場合、そのまま有効化しないでください。`pages`の保存・公開にページJSONの検証が適用されます。
+既定では`pages`コレクションの`document`フィールドを使います（保存先は後述の設定で変更できます）。
+対象コレクションが通常の記事ページとして使われている場合、そのまま有効化しないでください。保存・公開にページJSONの検証が適用されます。
 自動で既存スキーマやコンテンツを書き換える処理はありません。
 
 初期構成に必要なフィールド:
@@ -50,10 +50,10 @@ import { builderIntegration } from '@interactive-inc/emdash-plugins/builder/astr
 これらのフィールドはEmDashの管理画面または標準MCPのスキーマ操作で用意できます。既存DBへサンプルコンテンツを一括投入する必要はありません。
 
 `document.widget`に`builder:page-preview`を指定すると、EmDash標準のフィールド拡張でJSON入力欄を大きなプレビューに置き換えます。`title`と`description`には`builder:managed`を指定し、チャットで管理する値を通常画面の入力欄から隠せます。保存データ・検証・APIからの更新は維持されます。既存サイトでは標準のフィールド更新APIでwidgetだけを設定してください。
-ページを開くと保存済み下書きをプレビュー枠だけで表示し、保存内容が変わると自動で読み込み直します。公開はEmDash標準の公開ボタンを使います。Site Studioとサイドパネルは追加しません。
-管理画面の部品はReactとブラウザー標準APIだけで取得・URL判定を行い、EmDash内部のTanStack Query / Routerには依存しません。移植可能なプラグインとしてホストの別名設定に依存しない相対importと標準HTML操作部品を使います。
+ページを開くと保存済み下書きをプレビュー枠だけで表示し、保存内容が変わると自動で読み込み直します。プレビュー枠はページの高さに合わせて伸びます。公開はEmDash標準の公開ボタンを使います。
+管理画面の部品はReactとブラウザー標準APIだけで動き、EmDash内部のライブラリーやホストの別名設定に依存しません。
 
-## 認証とプレビュー
+### 認証とプレビュー
 
 - EmDash標準のユーザー・ロール・セッションとMCP OAuthを使用します。
 - プロセスの環境変数`EMDASH_PREVIEW_SECRET`に安定した署名キーを設定してください。EmDash本体とプラグインで同じキーを使います。
@@ -62,7 +62,7 @@ import { builderIntegration } from '@interactive-inc/emdash-plugins/builder/astr
 - 署名付きリンクは15分有効で対象の1ページだけを許可します。別記事の下書きへのアクセス権は付与しません。
 - EmDash管理画面のPluginsで、BuilderのMCPツールを有効にしてください。MCPクライアントには必要な`content:*`と`mcp:tools:builder`のスコープを許可します。
 
-## 公開エントリ
+### 公開エントリ
 
 | import | 用途 |
 | --- | --- |
@@ -81,12 +81,10 @@ import { builderIntegration } from '@interactive-inc/emdash-plugins/builder/astr
 配布するソース内は相対importを維持し、ホスト固有の`@/`エイリアスには依存しません。
 
 標準では12種類の部品を使用します。ホスト側で独自部品を登録し、保存先コレクション・公開URL・プレビューURLを変更できます。
-ライセンスはMITです。npmへの公開はまだ行っていません。
 
+### 保存先・URL・部品の拡張
 
-## 保存先・URL・部品の拡張
-
-`builderPlugin()`と`builderIntegration()`に同じ設定を渡します。省略時は従来どおり`pages`、公開URLは`/`配下、トップページのslugは`home`、プレビューは`/preview`配下です。
+`builderPlugin()`と`builderIntegration()`に同じ設定を渡します。省略時は保存先が`pages`、公開URLは`/`配下、トップページのslugは`home`、プレビューは`/preview`配下です。
 設定変更前に開発アプリを停止し、変更後に起動し直してください。
 
 ```js
@@ -127,10 +125,14 @@ export default {
 
 独自のルートを実装する場合は`pageResponse(identifier, builder, components)`と`<SiteRenderer document={page.document} state={page.state} components={components} />`で同じ設定・部品定義を渡します。単独で検証するときも`validateDocument(document, components)`を使用します。
 
-## 権限と検証
+### 権限と検証
 
 プレビュー発行はEmDashの`content:read_drafts`権限に従います。匿名とSubscriberは拒否し、Contributor・Author・Editor・Adminは許可します。MCPでは加えて`mcp:tools:builder`スコープが必要です。管理画面は標準セッションを使います。EmDash 1.3.1のプラグインRESTルートをPATで直接呼ぶ場合は`admin`スコープも必要ですが、ロールによる権限チェックは引き続き適用されます。署名リンクは発行から15分有効で、コレクションと1ページに限定されます。
 
 - `vp run test`: ロール別の発行可否・署名対象・15分の有効期間、独自部品の検証とSSR、設定とエディターの対象を確認します。
 - `vp run smoke`: ローカルAPI/MCPで署名改ざん・期限切れ・別コレクション/ページへの流用・スコープ不足を確認します。`.env`または環境変数に、起動中のサーバーと同じ`EMDASH_PREVIEW_SECRET`が必要です。
 - `vp run test:package`: 一時ホストに配布物をインストールし、実ユーザーのロール別HTTP権限、標準構成と独自部品・保存先・URLを変えた構成を開発/本番SSRで確認します。テスト用ユーザーとトークンは一時ホストのDBにだけ作成します。
+
+## ライセンス
+
+MIT

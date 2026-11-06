@@ -51,8 +51,11 @@ Design decisions: [.docs/index.md](.docs/index.md). Setup and checks: [README.md
 
 ## Verification
 
-- `vp run check`, `vp run test`, `vp run build` before every commit.
-- `vp run test:package` installs the packed tarball into a temporary host and checks MCP, publication, previews, role permissions and custom configuration in dev and production builds. Run it after any change to exports, routes, options, packaging, or island code and its dependencies (it enforces the island JavaScript budget).
+- During development use `vp run test` (source-level tests with mocked EmDash I/O, no build). `vp run verify` adds package typechecking. Do not run release checks on every edit or commit.
+- For a focused change, pass the affected test files to the same command, e.g. `vp run test -- tests/builder/document.test.ts`. Paths are relative to `packages/emdash-plugins`. Choose all relevant callers/consumers; shared changes require the full fast suite. With no arguments, every fast test runs, including in CI. Do not cache test results or disable process isolation for speed.
+- `vp run test:integration` covers real EmDash signing/configuration, hydration and sample-host tests. `vp run test:all` runs both test tiers. Preserve the process isolation of module mocks.
+- Before release run `vp run release`: all typechecks, both test tiers, Node/Cloudflare builds and the isolated package check. PR/main CI runs only package typechecking and fast tests; the separate release workflow runs manually or for `v*` tags. See [.docs/testing.md](.docs/testing.md).
+- `vp run test:package` is a release check: it installs the packed tarball into a temporary host and checks MCP, publication, previews, role permissions and custom configuration in dev and production builds. Changes to exports, routes, options, packaging, or island code and its dependencies must pass it before release, rather than on every edit (it also enforces the island JavaScript budget).
 - `vp run smoke` runs against the local dev server only and uses EmDash's official development login. Never run it against production.
 
 ## Release and deployment

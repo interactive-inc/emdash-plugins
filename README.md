@@ -36,19 +36,25 @@ portless
 ## 検査
 
 ```sh
-vp run check         # パッケージとサンプルの型検査
-vp run test          # パッケージとサンプルのテスト
-vp run build         # パッケージ → サンプルの順でビルド
-vp run smoke         # 起動中のサンプルでMCP/API/下書き隔離を検査
-vp run test:package  # 別フォルダーにtgzをインストールしてビルド・起動・MCP操作を検査
+vp run test              # 普段の検査。ビルド・サーバー不要、EmDash通信はモック
+vp run test -- tests/builder/document.test.ts # 変更に関係するテストだけを指定（複数可）
+vp run verify            # パッケージの型検査 + 普段のテスト
+vp run test:integration  # 実EmDashの署名・設定、ハイドレーション、サンプルの検証
+vp run release    # 全型検査・全テスト・Node/Cloudflareビルド・配布物の導入検査
 ```
+
+普段のテストはソースを直接読み、DB・ネットワーク・開発サーバーを使いません。EmDashとの境界だけをモックし、JSON検証・データ解決・描画・権限判断は実装そのものを検査します。`test:integration`はプラグインをビルドするため、起動中のサンプルを先に`vp run dev:stop`で止めてください。終了後は`portless`で起動し直します。
+
+PRとmainへのpushでは軽い型検査と普段のテストだけをCIで実行します。重い検査は`Release checks`の手動実行または`v*`タグへのpushで実行します。公開・デプロイは行いません。リリース前はその対象コミットで`release`を通してください。[検査の分担と限界](.docs/testing.md)も参照してください。
+
+`vp run test:all`で普段のテストと結合テストをまとめて実行できます。既存の`check`（全型検査）、`build`（Node用ビルド）、`build:cloudflare`、`test:package`は必要なときに個別実行できます。
 
 `test:package`は一時フォルダー内だけで導入用の圧縮ファイルと独立したEmDashホストを作成します。リポジトリに配布ファイルは残しません。インターネットから依存を取得する場合があります。
 ルートは開発用のprivateワークスペースで、配布対象は`packages/emdash-plugins`だけです。
 プラグインはMITライセンスで、`publishConfig.access: public`を設定しています。パッケージ名は`@interactive-inc/emdash-plugins`です。npmへの公開は`packages/emdash-plugins`で`vp pm publish`を実行する別の操作です。
 `.env`、DB、セッション、サンプルのコンテンツは配布ファイルに含めません。
 
-`vp run smoke`はMCPクライアントの登録なしで、実際のMCPへ接続してツール一覧・作成・公開・プレビューを確認します。Portless以外で直接起動した場合は`SMOKE_ORIGIN=http://127.0.0.1:4331 vp run smoke`を使います。
+`vp run smoke`は起動中のローカルサンプルに対する追加の検査です。MCPクライアントの登録なしで、実際のMCPへ接続してツール一覧・作成・公開・プレビューを確認します。Portless以外で直接起動した場合は`SMOKE_ORIGIN=http://127.0.0.1:4331 vp run smoke`を使います。
 
 ## 本番実行
 

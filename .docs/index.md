@@ -32,7 +32,9 @@
 
 - コマンドはVite+（vp）を使う。PortlessのURLは`https://emdash-plugins.localhost`。
 - 依存・設定・環境・プラグインのビルドを変える前に開発アプリを停止し、変更後に完全に起動し直す。EmDash 1.3.1は内部再起動後に古いVite runnerを参照する場合がある。
-- `vp run check`、`vp run test`、`vp run build`で型・ユニット・SSR・ビルドを検査する。
+- 普段は`vp run test`でソースと境界モックを検査する。ビルドやサーバー起動は不要。PR/mainのCIもパッケージ型検査とこのテストだけにする。
+- 小さな変更では`vp run test -- tests/builder/document.test.ts`のように関係するテストだけを指定する。共通処理の変更とCIは引数なしで全件を実行する。結果のキャッシュや常駐プロセスは使わない。
+- 実EmDash・ハイドレーション・サンプルは`test:integration`、リリース前の全検査は`release`。重いCIは手動または`v*`タグで実行する。モックで実環境の検証を代替しない。[検査の分担](testing.md)を参照。
 - `vp run test:package`は一時フォルダーの独立ホストでインストール・MCP・公開/下書き・プレビューを検査する。配布ファイルはリポジトリへ残さない。
 - `vp run smoke`は起動中のローカルアプリ専用。公式開発ログインを使うため本番へ実行しない。
 - ライセンスはMIT。npmへの公開は`packages/emdash-plugins`で`vp pm publish`を実行する。

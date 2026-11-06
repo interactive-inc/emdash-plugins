@@ -1,4 +1,4 @@
-import { animations, enter, frames, isObserved, place, preferReducedMotion, relayout, window } from './helpers/dom.ts';
+import { animations, enter, frames, isObserved, place, preferReducedMotion, relayout, window } from '../helpers/dom.ts';
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { execFileSync } from 'node:child_process';
@@ -6,12 +6,12 @@ import { fileURLToPath } from 'node:url';
 import { act } from 'react';
 import { createRoot, hydrateRoot, type Root } from 'react-dom/client';
 import { LazyMotion, domAnimation } from 'motion/react';
-import builderMotion from '../../src/builder/motion-directive.ts';
-import { MotionSite } from '../../src/builder/motion-site.tsx';
-import { MotionStage, Reveal, StageContext } from '../../src/builder/reveal.tsx';
-import { validateDocument, type PageDocument } from '../../src/builder/document.ts';
-import { resolvePage, type ResolvedView } from '../../src/builder/resolve-page.ts';
-import { hostComponents } from './helpers/host-components.tsx';
+import builderMotion from '../../../src/builder/motion-directive.ts';
+import { MotionSite } from '../../../src/builder/motion-site.tsx';
+import { MotionStage, Reveal, StageContext } from '../../../src/builder/reveal.tsx';
+import { validateDocument, type PageDocument } from '../../../src/builder/document.ts';
+import { resolvePage, type ResolvedView } from '../../../src/builder/resolve-page.ts';
+import { hostComponents } from '../helpers/host-components.tsx';
 
 const state = { page: { title: 'Title', description: '', slug: 'home' }, data: {} };
 function view(input: unknown): ResolvedView {
@@ -45,7 +45,7 @@ const page = view({ version: 1, spec: { root: 'hero', elements: {
 /** The server renders without browser globals, so its markup comes from a separate process. */
 const server: { browser: boolean; motion: string; static: string } = JSON.parse(execFileSync(process.execPath, [
   ...process.execArgv.filter(argument => !argument.startsWith('--test')),
-  fileURLToPath(new URL('./helpers/render-server.tsx', import.meta.url)),
+  fileURLToPath(new URL('../helpers/render-server.tsx', import.meta.url)),
 ], { input: JSON.stringify(page), encoding: 'utf8' }));
 const parse = (html: string) => { const root = window.document.createElement('div'); root.innerHTML = html; return root; };
 const wait = (ms: number) => new Promise(resolve => setTimeout(resolve, ms));

@@ -2,9 +2,9 @@ import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { existsSync, readFileSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
-import { builderIntegration } from '../../src/builder/astro.ts';
-import { builderPlugin } from '../../src/builder/plugin.ts';
-import type { BuilderOptions } from '../../src/builder/options.ts';
+import { builderIntegration } from '../../../src/builder/astro.ts';
+import { builderPlugin } from '../../../src/builder/plugin.ts';
+import type { BuilderOptions } from '../../../src/builder/options.ts';
 
 type Plugin = { enforce?: string; resolveId(id: string, importer?: string): string | undefined; load(this: unknown, id: string): string | undefined };
 function setup(options: BuilderOptions) {
@@ -23,12 +23,12 @@ function setup(options: BuilderOptions) {
   const extensions = (consumer: 'client' | 'server') => load('virtual:emdash-plugins/builder/extensions', consumer);
   return { ...calls, vite, load, extensions };
 }
-const source = (path: string) => fileURLToPath(new URL(`../../src/builder/${path}`, import.meta.url));
+const source = (path: string) => fileURLToPath(new URL(`../../../src/builder/${path}`, import.meta.url));
 
 /** Evaluates the virtual runtime as EmDash imports it, with the package runtime from source. */
 async function virtualRuntime(options: BuilderOptions) {
   const code = setup(options).load('virtual:emdash-plugins/builder/runtime')!
-    .replace('@interactive-inc/emdash-plugins/builder/runtime', new URL('../../src/builder/runtime.ts', import.meta.url).href)
+    .replace('@interactive-inc/emdash-plugins/builder/runtime', new URL('../../../src/builder/runtime.ts', import.meta.url).href)
     .replace('virtual:emdash-plugins/builder/extensions', 'data:text/javascript,export%20default%20%7B%7D');
   return await import(`data:text/javascript,${encodeURIComponent(code)}`) as { createPlugin(options: unknown): { id: string } };
 }
@@ -73,8 +73,8 @@ test('the page island hydrates through the packaged client directive', () => {
   assert.equal(directives.length, 1);
   assert.equal(directives[0]!.name, 'builder-motion');
   // The integration ships compiled from dist, where the directive is compiled next to it.
-  assert.equal(directives[0]!.entrypoint, fileURLToPath(new URL('../../src/builder/motion-directive.js', import.meta.url)));
-  assert.ok(existsSync(fileURLToPath(new URL('../../src/builder/motion-directive.ts', import.meta.url))));
+  assert.equal(directives[0]!.entrypoint, fileURLToPath(new URL('../../../src/builder/motion-directive.js', import.meta.url)));
+  assert.ok(existsSync(fileURLToPath(new URL('../../../src/builder/motion-directive.ts', import.meta.url))));
 });
 
 test('host components reach the browser only when motion can hydrate a page', () => {

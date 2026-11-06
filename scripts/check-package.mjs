@@ -2,6 +2,7 @@ import assert from 'node:assert/strict';
 import { execFile, spawn } from 'node:child_process';
 import { randomBytes } from 'node:crypto';
 import { once } from 'node:events';
+import { closeSync, openSync } from 'node:fs';
 import { cp, mkdir, mkdtemp, readdir, readFile, realpath, rm, writeFile } from 'node:fs/promises';
 import { createServer } from 'node:net';
 import { tmpdir } from 'node:os';
@@ -24,7 +25,7 @@ const islandCode = /builder-motion-fallback|data-motion-armed/;
 const inheritedEnvironment = Object.fromEntries(Object.entries(process.env).filter(([name]) => !name.startsWith('EMDASH_') && !['SITE_URL', 'PREVIEW_SECRET', 'AUTH_SECRET'].includes(name)));
 const environment = { ...inheritedEnvironment, EMDASH_DATABASE_URL: 'file:./.data/emdash.db', EMDASH_PREVIEW_SECRET: previewSecret };
 let productionServer;
-let hasDevServer = false;
+let developmentServer;
 
 async function run(command, args, cwd = fixture, env = environment) {
   try {
@@ -44,11 +45,38 @@ async function freePort() {
   await new Promise((resolve, reject) => server.close(error => error ? reject(error) : resolve()));
   return port;
 }
-async function waitForServer(origin) {
-  for (let attempt = 0; attempt < 100; attempt++) {
-    try { await fetch(origin); return; } catch { await delay(250); }
+async function waitForServer(origin, server = null) {
+  const deadline = Date.now() + 180_000;
+  while (Date.now() < deadline) {
+    if (server && (!server.pid || server.exitCode !== null || server.signalCode !== null)) throw new Error('The isolated server exited before becoming ready; inspect the fixture logs');
+    try {
+      const response = await fetch(origin, { signal: AbortSignal.timeout(Math.min(30_000, deadline - Date.now())) });
+      await response.body?.cancel();
+      if (response.status < 500) return;
+    } catch {}
+    await delay(250);
   }
-  throw new Error('The isolated host did not start');
+  throw new Error('The isolated host did not become ready within 180s; inspect the fixture logs');
+}
+/** Own the child directly: Astro's detached launcher has a fixed 30s cold-start timeout. */
+async function startDevelopment(astroCli, port, origin) {
+  const log = openSync(join(fixture, 'test-dev.log'), 'w');
+  try {
+    developmentServer = spawn(process.execPath, [astroCli, 'dev', '--host', '127.0.0.1', '--port', String(port)], {
+      cwd: fixture, env: { ...environment, ASTRO_DEV_BACKGROUND: '1' }, stdio: ['ignore', log, log],
+    });
+    developmentServer.on('error', () => {}); // waitForServer reports spawn failure without exposing environment values.
+  } finally { closeSync(log); }
+  await waitForServer(origin, developmentServer);
+}
+async function stopDevelopment() {
+  const server = developmentServer;
+  developmentServer = undefined;
+  if (!server?.pid || server.exitCode !== null || server.signalCode !== null) return;
+  const exited = once(server, 'exit');
+  server.kill('SIGTERM');
+  const force = setTimeout(() => server.kill('SIGKILL'), 5000);
+  try { await exited; } finally { clearTimeout(force); }
 }
 async function checkPage(origin, path, status, expectedText = null) {
   const response = await fetch(new URL(path, origin));
@@ -156,9 +184,7 @@ Astro.response.headers.set('Content-Security-Policy', "frame-ancestors 'none'");
   const developmentPort = await freePort();
   const developmentOrigin = `http://127.0.0.1:${developmentPort}`;
   const astroCli = join(fixture, 'node_modules/astro/bin/astro.mjs');
-  await run(process.execPath, [astroCli, 'dev', '--background', '--host', '127.0.0.1', '--port', String(developmentPort)]);
-  hasDevServer = true;
-  await waitForServer(developmentOrigin);
+  await startDevelopment(astroCli, developmentPort, developmentOrigin);
   const smokeOutput = await run(process.execPath, [join(web, 'scripts/smoke.mjs')], fixture, { ...environment, SMOKE_ORIGIN: developmentOrigin });
   process.stdout.write(smokeOutput);
   await checkPage(developmentOrigin, '/existing', 200, 'Existing host route');
@@ -206,8 +232,7 @@ Astro.response.headers.set('Content-Security-Policy', "frame-ancestors 'none'");
   }
   console.log('PASS: real subscriber, contributor, author, editor and admin tokens obey EmDash preview permissions');
 
-  await run(process.execPath, [astroCli, 'dev', 'stop']);
-  hasDevServer = false;
+  await stopDevelopment();
   await run(process.execPath, [astroCli, 'build']);
   console.log('PASS: installed package builds with the host and preserves its existing routes');
 
@@ -277,9 +302,7 @@ Astro.response.headers.set('Content-Security-Policy', "frame-ancestors 'none'");
   const movingCallout = /<div class="stack[^"]*"><aside data-custom="notice">CUSTOM REGISTERED COMPONENT<\/aside><aside data-custom="callout" data-motion="" style="opacity:0">CUSTOM MOVING COMPONENT<\/aside><\/div>/;
   seed.content.landing = [{ id: 'landing-home', slug: 'index', status: 'published', data: { title: 'Custom home', document: customDocument } }];
   await writeFile(join(fixture, 'seed/seed.json'), JSON.stringify(seed));
-  await run(process.execPath, [astroCli, 'dev', '--background', '--host', '127.0.0.1', '--port', String(developmentPort)]);
-  hasDevServer = true;
-  await waitForServer(developmentOrigin);
+  await startDevelopment(astroCli, developmentPort, developmentOrigin);
   const customSetup = await jsonRequest(developmentOrigin, '/_emdash/api/setup/dev-bypass?token=1', '');
   const customCatalog = await jsonRequest(developmentOrigin, '/_emdash/api/plugins/builder/catalog', customSetup.token);
   assert.ok(customCatalog.components.Notice, 'Custom component must be discoverable');
@@ -308,8 +331,7 @@ Astro.response.headers.set('Content-Security-Policy', "frame-ancestors 'none'");
     method: 'POST', headers: { Authorization: `Bearer ${customSetup.token}`, 'Content-Type': 'application/json' }, body: JSON.stringify({ slug: 'invalid-custom', data: { title: 'Invalid', document: { version: 1, spec: { root: 'notice', elements: { notice: { type: 'Notice', props: { text: 123 } } } } } } }),
   });
   assert.equal(invalidCustom.status, 422);
-  await run(process.execPath, [astroCli, 'dev', 'stop']);
-  hasDevServer = false;
+  await stopDevelopment();
   await run(process.execPath, [astroCli, 'build']);
   productionServer = spawn(process.execPath, ['dist/server/entry.mjs'], { cwd: fixture, env: { ...environment, HOST: '127.0.0.1', PORT: String(productionPort) }, stdio: ['ignore', 'pipe', 'pipe'] });
   await waitForServer(productionOrigin);
@@ -346,7 +368,7 @@ Astro.response.headers.set('Content-Security-Policy', "frame-ancestors 'none'");
   console.log('PASS: motion: false renders static pages and builds neither the island nor host components into client bundles');
 
 } finally {
-  if (hasDevServer) await run(process.execPath, [join(fixture, 'node_modules/astro/bin/astro.mjs'), 'dev', 'stop']).catch(() => {});
+  await stopDevelopment();
   if (productionServer && productionServer.exitCode === null) {
     productionServer.kill('SIGTERM');
     await once(productionServer, 'exit');

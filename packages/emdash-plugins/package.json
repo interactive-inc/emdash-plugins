@@ -82,7 +82,8 @@
   "scripts": {
     "build": "tsc -p tsconfig.build.json",
     "check": "tsc --noEmit -p tsconfig.json",
-    "test": "tsx --experimental-test-module-mocks --test \"tests/**/*.test.ts\" \"tests/**/*.test.tsx\"",
+    "test": "sh scripts/test.sh",
+    "test:integration": "tsx --experimental-test-module-mocks --test \"tests/*/integration/*.test.ts\" \"tests/*/integration/*.test.tsx\"",
     "prepack": "vp run build"
   },
   "engines": {

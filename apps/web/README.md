@@ -99,9 +99,9 @@ EmDashの標準フィールドとして`slug: "home"`を指定するとホーム
 ## 確認
 
 ```sh
-vp run check
-vp run test
-vp run build
+vp run test             # ルートで実行。普段はパッケージのソースとモックだけを検査
+vp run test:integration # ルートで実行。サンプルのseed検査も含む（先に開発アプリを停止）
+vp run release   # ルートで実行。リリース前の全検査
 # portlessが起動している状態で実行
 vp run smoke
 ```
@@ -123,6 +123,6 @@ Cloudflareでは`astro.config.cloudflare.mjs`と、Git管理外の`wrangler.prod
 
 EmDashの更新は公式の`upgrade-emdash`で依存を更新し、生成された`.emdash/UPGRADE.md`の指示に従います。
 DB変更を含む更新は、更新したアプリの起動前に復旧可能なバックアップを用意します。
-独自プラグインはモノレポの`packages/emdash-plugins/`にあり、更新時は上記の検査とMCPの動作確認を行います。
+独自プラグインはモノレポの`packages/emdash-plugins/`にあります。普段は`test`を使い、配布・デプロイ前に`release`を通します。ローカルでMCPの操作を追加確認するときは`smoke`を使います。
 
 [EmDash公式ドキュメント](https://docs.emdashcms.com/) · [json-render](https://json-render.dev/docs)

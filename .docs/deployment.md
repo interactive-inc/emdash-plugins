@@ -13,9 +13,7 @@
 開発アプリを完全に停止してから実行する。
 
 ```sh
-vp run check
-vp run test
-vp run build
+vp run release
 vp run deploy:production
 ```
 

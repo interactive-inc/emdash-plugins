@@ -1,31 +1,17 @@
 import { PortableText } from '@portabletext/react';
 import type { TypedObject } from '@portabletext/types';
-import { z } from 'zod';
-import { safeUrl } from './safe-url.ts';
 
-const imageSchema = z.object({
-  asset: z.object({ _ref: z.string().min(1).max(300).optional(), url: z.string().optional() }),
-  alt: z.string().optional(),
-  caption: z.string().optional(),
-});
-
-function ContentImage({ value }: { value: unknown }) {
-  const image = imageSchema.safeParse(value);
-  if (!image.success) return null;
-  const asset = image.data.asset;
-  const src = safeUrl(asset.url ?? (asset._ref ? `/_emdash/api/media/file/${encodeURIComponent(asset._ref)}` : ''), true);
-  if (!src) return null;
-  return <figure><img src={src} alt={image.data.alt ?? ''} loading="lazy" decoding="async" />{image.data.caption && <figcaption>{image.data.caption}</figcaption>}</figure>;
+// A paragraph cannot hold a figure: the browser would close it early and hydration would not match.
+function ContentImage({ value, isInline }: { value: { src: string; alt?: string; caption?: string }; isInline: boolean }) {
+  const image = <img src={value.src} alt={value.alt ?? ''} loading="lazy" decoding="async" />;
+  return isInline ? image : <figure>{image}{value.caption && <figcaption>{value.caption}</figcaption>}</figure>;
 }
 
-/** Render rich text structurally. Links and media use the same URL boundary as page components. */
+/** Renders rich text as projectPortableText left it: link hrefs and image sources are already safe. */
 export function PortableContent({ value }: { value: TypedObject[] }) {
-  return <div className="prose"><PortableText value={value} components={{
-    marks: { link: ({ value, children }) => {
-      const href = safeUrl(value?.href);
-      return href ? <a href={href}>{children}</a> : <span>{children}</span>;
-    } },
-    types: { image: ContentImage },
+  return <PortableText value={value} components={{
+    marks: { link: ({ value, children }) => value?.href ? <a href={value.href}>{children}</a> : <span>{children}</span> },
+    types: { image: ContentImage, 'builder-omitted': () => null },
     unknownType: () => null,
-  }} /></div>;
+  }} />;
 }

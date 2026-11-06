@@ -1,6 +1,7 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { validateDocument, validateResolvedSpec } from '../../src/builder/document.ts';
+import { validateDocument } from '../../src/builder/document.ts';
+import { resolvePage } from '../../src/builder/resolve-page.ts';
 import { safeUrl } from '../../src/builder/safe-url.ts';
 
 const pageState = { page: { title: 'A real title', description: '', slug: 'home' }, data: {} };
@@ -10,8 +11,8 @@ test('state bindings are validated after resolution', () => {
   const result = validateDocument(minimal());
   assert.equal(result.success, true);
   if (result.success) {
-    validateResolvedSpec(result.document, pageState);
-    assert.throws(() => validateResolvedSpec(result.document, { ...pageState, page: { ...pageState.page, title: 12 } } as never), /bound data/);
+    resolvePage(result.document, pageState);
+    assert.throws(() => resolvePage(result.document, { ...pageState, page: { ...pageState.page, title: 12 } } as never), /bound data/);
   }
 });
 test('cycles, missing references, shared children, and unreachable nodes are rejected', () => {
@@ -43,8 +44,16 @@ test('item bindings require a bounded repeat and resolve within its scope', () =
   } } };
   const result = validateDocument(doc);
   assert.equal(result.success, true);
-  if (result.success) validateResolvedSpec(result.document, { ...pageState, data: { posts: [{ id: '1', title: 'First' }] } });
+  if (result.success) resolvePage(result.document, { ...pageState, data: { posts: [{ id: '1', title: 'First' }] } });
   assert.equal(validateDocument({ version: 1, spec: { root: 'title', elements: { title: doc.spec.elements.title } } }).success, false);
+});
+test('a repeat lists a query without id, never a single entry', () => {
+  const doc = (query: Record<string, unknown>) => validateDocument({ version: 1, data: { posts: query }, spec: { root: 'list', elements: {
+    list: { type: 'Grid', props: {}, repeat: { statePath: '/data/posts', key: 'id' }, children: ['title'] },
+    title: { type: 'Heading', props: { text: { $item: 'title' } } },
+  } } });
+  assert.equal(doc({ collection: 'posts' }).success, true);
+  assert.deepEqual(doc({ collection: 'posts', id: 'my-slug' }), { success: false, errors: ['list: repeat needs a list query without id'] });
 });
 test('oversized documents and executable theme values are rejected', () => {
   assert.equal(validateDocument({ ...minimal(), extra: 'a'.repeat(200001) }).success, false);
@@ -68,5 +77,5 @@ test('hidden optional content is not required to resolve its properties', () => 
     heading: { type: 'Heading', props: { text: { $state: '/data/article/title' } }, visible: { $state: '/data/article' } },
   } } });
   assert.equal(result.success, true);
-  if (result.success) validateResolvedSpec(result.document, { ...pageState, data: { article: null } });
+  if (result.success) resolvePage(result.document, { ...pageState, data: { article: null } });
 });

@@ -1,0 +1,27 @@
+---
+import type { LoadedPage } from './server/load-page.ts';
+import './styles/site.css';
+
+type Props = { page: LoadedPage | null; status: number; previewRoute?: boolean };
+const { page, status, previewRoute = false } = Astro.props;
+const preview = previewRoute || page?.isPreview;
+const title = page?.title ?? (status === 404 ? 'ページが見つかりません' : 'ページを表示できません');
+---
+<!doctype html>
+<html lang="ja">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>{title}</title>
+    {page?.description && <meta name="description" content={page.description} />}
+    {(preview || status !== 200) && <meta name="robots" content="noindex, nofollow" />}
+    <slot name="head" />
+  </head>
+  <body class={preview ? 'is-preview' : undefined}>
+    {preview && <aside class="preview-banner" role="status">プレビュー — 保存済みの内容を表示しています</aside>}
+    <main>
+      {page ? <slot /> :
+        <div class="error-page"><p class="error-code">{status}</p><h1>{title}</h1><p>{status === 404 ? 'URLをご確認ください。' : '少し時間をおいて、もう一度お試しください。'}</p><a href="/">ホームへ</a></div>}
+    </main>
+  </body>
+</html>

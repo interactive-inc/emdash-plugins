@@ -1,7 +1,7 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { readFile } from 'node:fs/promises';
-import { validateDocument, validateResolvedSpec } from '@interactive-inc/emdash-plugins/builder/document';
+import { validateDocument } from '@interactive-inc/emdash-plugins/builder/document';
 
 const seed = JSON.parse(await readFile(new URL('../seed/seed.json', import.meta.url), 'utf8'));
 
@@ -13,11 +13,13 @@ test('the page editor presents a preview instead of editable internal fields', (
   }
 });
 
-test('the web app pages validate and resolve with the distributed package', () => {
+test('the web app pages validate with the distributed package', () => {
+  const moving = new Set<string>();
   for (const page of seed.content.pages) {
     const validation = validateDocument(page.data.document);
-    assert.equal(validation.success, true);
-    if (!validation.success) continue;
-    validateResolvedSpec(validation.document, { page: { title: page.data.title, description: page.data.description, slug: page.slug }, data: {} });
+    assert.equal(validation.success, true, `${page.slug}: ${validation.success ? '' : validation.errors.join('; ')}`);
+    if (validation.success && Object.values(validation.document.spec.elements).some(element => element.props.motion)) moving.add(page.slug);
   }
+  // The README describes the sample: the home page animates and the guide stays static.
+  assert.deepEqual([...moving], ['home']);
 });

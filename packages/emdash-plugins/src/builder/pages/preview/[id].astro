@@ -1,7 +1,7 @@
 ---
 import options from 'virtual:emdash-plugins/builder/config';
 import components from 'virtual:emdash-plugins/builder/extensions';
-import PageShell from '../../PageShell.astro';
+import PageShell from 'virtual:emdash-plugins/builder/page-shell';
 import { pageResponse } from '@interactive-inc/emdash-plugins/builder/server';
 const result = await pageResponse(Astro.params.id ?? '', options, components);
 // A preview URL must actually authorize this entry; a guessed ID cannot act as a draft URL.
@@ -11,4 +11,4 @@ Astro.response.status = status;
 Astro.response.headers.set('Cache-Control', 'private, no-store');
 Astro.response.headers.set('X-Robots-Tag', 'noindex, nofollow');
 ---
-<PageShell page={page} status={status} components={components} previewRoute />
+<PageShell page={page} status={status} previewRoute />

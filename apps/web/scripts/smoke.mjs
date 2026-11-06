@@ -32,6 +32,11 @@ function success(result, label) {
   return result.value.data;
 }
 function pageDocument(text) { return { version: 1, spec: { root: 'heading', elements: { heading: { type: 'Heading', props: { text, level: 'h1' } } } } }; }
+function movingDocument(text, motion = { effect: 'fade-up', duration: 'slow' }) {
+  const document = pageDocument(text);
+  document.spec.elements.heading.props.motion = motion;
+  return document;
+}
 async function create(collection, data, slug) {
   const result = success(await request(`/_emdash/api/content/${collection}`, { data, slug }), 'create');
   created.push([collection, result.item.id]);
@@ -75,6 +80,10 @@ try {
   assert.ok(catalog && preview && validate, `Missing plugin tools: ${tools.map(tool => tool.name).join(', ')}`);
   await mcp(catalog.name);
   await mcp(validate.name, { document: pageDocument('Valid') });
+  assert.equal((await mcp(validate.name, { document: movingDocument('Valid') })).success, true, 'Motion tokens must validate');
+  const invalidMotion = await mcp(validate.name, { document: movingDocument('Invalid', { effect: 'fade-up', duration: '2s' }) });
+  assert.equal(invalidMotion.success, false, 'Raw motion timings must be rejected');
+  assert.ok(invalidMotion.errors.some(error => error.startsWith('heading.motion.duration:') && error.includes('slow')), JSON.stringify(invalidMotion.errors));
   bearer = '';
   const limited = success(await request('/_emdash/api/admin/api-tokens', { name: 'builder-smoke-no-plugin-scope', scopes: ['content:read'] }), 'limited token');
   extraTokenIds.push(limited.info.id);
@@ -86,6 +95,8 @@ try {
 
   const invalid = await request('/_emdash/api/content/pages', { slug: 'invalid-smoke', data: { title: 'Invalid', document: { version: 1, spec: { root: 'bad', elements: { bad: { type: 'script', props: {} } } } } } });
   assert.equal(invalid.response.ok, false, 'invalid JSON must not be stored through the core REST API');
+  const invalidMotionSave = await request('/_emdash/api/content/pages', { slug: 'invalid-motion-smoke', data: { title: 'Invalid motion', document: movingDocument('Invalid', { effect: 'spin' }) } });
+  assert.equal(invalidMotionSave.response.ok, false, 'unknown motion effects must not be stored through the core REST API');
   const unauthorized = await request('/_emdash/api/plugins/builder/preview', { id: 'anything' }, 'POST', false);
   assert.equal(unauthorized.response.ok, false, 'anonymous caller cannot mint preview tokens');
   console.log('PASS: core save hook rejects invalid JSON; anonymous preview creation is denied');
@@ -135,8 +146,21 @@ try {
   assert.doesNotMatch(publicHtml, /SECOND DRAFT/);
   assert.match((await publicPage(previewData.url)).value, /SECOND DRAFT/);
   await publish('pages', id);
-  assert.match((await publicPage(`/${slug}`)).value, /SECOND DRAFT/);
+  const staticHtml = (await publicPage(`/${slug}`)).value;
+  assert.match(staticHtml, /SECOND DRAFT/);
+  assert.doesNotMatch(staticHtml, /<astro-island|data-motion=""/, 'A page without motion must not hydrate');
   console.log('PASS: publish, edit, preview and republish preserve the live/draft boundary');
+
+  const movingSlug = `moving-${Date.now()}`;
+  const moving = await create('pages', { title: 'Moving page', document: movingDocument('MOVING HEADLINE') }, movingSlug);
+  await publish('pages', moving.item.id);
+  const movingHtml = (await publicPage(`/${movingSlug}`)).value;
+  assert.equal(movingHtml.match(/<astro-island\b/g)?.length, 1, 'A page with motion renders one island');
+  assert.match(movingHtml, /<astro-island\b[^>]*\bclient="builder-motion"/);
+  // The server paints it transparent in place, so nothing flashes before hydration.
+  assert.match(movingHtml, /<h1 class="heading[^"]*" data-motion="" style="opacity:0">MOVING HEADLINE<\/h1>/);
+  assert.match(movingHtml, /<noscript><style>\[data-motion\]\{opacity:1!important/);
+  console.log('PASS: a page with motion hydrates one island and server-renders it transparent');
 
   const post = await create('posts', { title: 'BOUND POST', excerpt: 'Public data binding' }, `post-${Date.now()}`);
   await publish('posts', post.item.id);

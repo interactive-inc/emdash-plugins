@@ -7,6 +7,8 @@ const optionsSchema = z.strictObject({
   previewPath: prefix.refine(value => value.length > 0 && !value.startsWith('/_emdash'), 'Preview path must be outside EmDash').default('/preview'),
   homeSlug: z.string().regex(/^[a-zA-Z0-9_-]+$/).max(200).default('home'),
   componentsModule: z.string().min(1).optional(),
+  // false keeps every page script-free and keeps componentsModule out of the browser bundle.
+  motion: z.boolean().default(true),
 });
 export type BuilderOptions = z.input<typeof optionsSchema>;
 export type ResolvedOptions = z.output<typeof optionsSchema>;

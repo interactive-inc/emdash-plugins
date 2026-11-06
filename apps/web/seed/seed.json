@@ -184,7 +184,10 @@
                 "eyebrow": {
                   "type": "Badge",
                   "props": {
-                    "text": "A website, shaped by conversation"
+                    "text": "A website, shaped by conversation",
+                    "motion": {
+                      "effect": "fade"
+                    }
                   }
                 },
                 "headline": {
@@ -192,7 +195,11 @@
                   "props": {
                     "text": "話すたび、\nサイトが育つ。",
                     "level": "h1",
-                    "size": "xl"
+                    "size": "xl",
+                    "motion": {
+                      "effect": "fade-up",
+                      "duration": "slow"
+                    }
                   }
                 },
                 "intro": {
@@ -200,14 +207,23 @@
                   "props": {
                     "text": "思いついたことを、言葉にする。\nページも、デザインも、コンテンツも。\n会話から、あなたらしいサイトをつくろう。",
                     "size": "lg",
-                    "tone": "muted"
+                    "tone": "muted",
+                    "motion": {
+                      "effect": "fade-up",
+                      "delay": "short"
+                    }
                   }
                 },
                 "hero-actions": {
                   "type": "Stack",
                   "props": {
                     "direction": "horizontal",
-                    "gap": "sm"
+                    "gap": "sm",
+                    "motion": {
+                      "effect": "fade-up",
+                      "delay": "medium",
+                      "stagger": "short"
+                    }
                   },
                   "children": [
                     "hero-primary",
@@ -262,7 +278,10 @@
                 "feature-label": {
                   "type": "Badge",
                   "props": {
-                    "text": "Made for your next idea"
+                    "text": "Made for your next idea",
+                    "motion": {
+                      "effect": "fade-up"
+                    }
                   }
                 },
                 "feature-heading": {
@@ -270,14 +289,22 @@
                   "props": {
                     "text": "つくることに、集中しよう。",
                     "level": "h2",
-                    "size": "md"
+                    "size": "md",
+                    "motion": {
+                      "effect": "fade-up",
+                      "delay": "short"
+                    }
                   }
                 },
                 "feature-grid": {
                   "type": "Grid",
                   "props": {
                     "columns": 3,
-                    "gap": "md"
+                    "gap": "md",
+                    "motion": {
+                      "effect": "fade-up",
+                      "stagger": "medium"
+                    }
                   },
                   "children": [
                     "card-1",
@@ -415,13 +442,20 @@
                   "props": {
                     "text": "次のアイデアを、\nここから。",
                     "level": "h2",
-                    "size": "lg"
+                    "size": "lg",
+                    "motion": {
+                      "effect": "fade-up"
+                    }
                   }
                 },
                 "cta-text": {
                   "type": "Text",
                   "props": {
-                    "text": "まずは小さなページから。あなたの言葉が、サイトの最初の一歩になります。"
+                    "text": "まずは小さなページから。あなたの言葉が、サイトの最初の一歩になります。",
+                    "motion": {
+                      "effect": "fade-up",
+                      "delay": "short"
+                    }
                   }
                 },
                 "cta-link": {
@@ -429,7 +463,11 @@
                   "props": {
                     "label": "つくり方を知る ↗",
                     "href": "/guide",
-                    "variant": "primary"
+                    "variant": "primary",
+                    "motion": {
+                      "effect": "fade-up",
+                      "delay": "medium"
+                    }
                   }
                 },
                 "footer": {

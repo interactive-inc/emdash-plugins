@@ -1,11 +1,11 @@
 ---
 import options from 'virtual:emdash-plugins/builder/config';
 import components from 'virtual:emdash-plugins/builder/extensions';
-import PageShell from '../PageShell.astro';
+import PageShell from 'virtual:emdash-plugins/builder/page-shell';
 import { pageResponse } from '@interactive-inc/emdash-plugins/builder/server';
 const slug = Astro.params.slug || options.homeSlug;
 const { page, status } = await pageResponse(slug, options, components);
 Astro.response.status = status;
 Astro.response.headers.set('Cache-Control', 'private, no-store');
 ---
-<PageShell page={page} status={status} components={components} />
+<PageShell page={page} status={status} />

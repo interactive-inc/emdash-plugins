@@ -1,10 +1,11 @@
 import { ContentSaveRejectedError, definePlugin, getPreviewUrl } from 'emdash';
 import { z } from 'zod';
-import { componentSchemas, createPageGuide } from './catalog.ts';
+import { componentSchemas, createPageGuide, staggerComponentNames } from './catalog.ts';
 import { validateDocument } from './document.ts';
 import { pluginId, pluginVersion } from './constants.ts';
 import { resolveOptions, type BuilderOptions } from './options.ts';
 import { componentContract, type ComponentExtensions } from './extensions.ts';
+import { maxMotionElements, motionTokens } from './motion-tokens.ts';
 
 // EmDash's Contributor role is the lowest role that may read drafts.
 const contributorRole = 20;
@@ -16,7 +17,12 @@ export function createPlugin(input: BuilderOptions = {}, components: ComponentEx
   const contract = componentContract(components);
   const validate = (document: unknown) => validateDocument(document, components);
   const guide = createPageGuide(options);
-  const schemas = Object.fromEntries(Object.entries(contract.props).map(([name, props]) => [name, { props: z.toJSONSchema(props), ...(components[name] ? { description: components[name].description, container: !!components[name].container } : {}) }]));
+  const schemas = Object.fromEntries(Object.entries(contract.props).map(([name, props]) => [name, { props: z.toJSONSchema(props), ...(components[name] ? { description: components[name].description, container: !!components[name].container, motion: !!components[name].motion } : {}) }]));
+  const motion = {
+    enabled: options.motion,
+    effect: Object.keys(motionTokens.effect), delay: Object.keys(motionTokens.delay), duration: Object.keys(motionTokens.duration), stagger: Object.keys(motionTokens.stagger),
+    components: [...contract.motion], staggerComponents: [...staggerComponentNames], limit: maxMotionElements,
+  };
   return definePlugin({
     id: pluginId, version: pluginVersion,
     capabilities: ['content:read', 'content:write', 'hooks.content-policy:register'],
@@ -53,7 +59,7 @@ export function createPlugin(input: BuilderOptions = {}, components: ComponentEx
       configuration: { permission: 'content:read', handler: async () => ({ collection: options.collection, previewPath: options.previewPath }) },
       catalog: {
         permission: 'content:read',
-        handler: async () => ({ version: 1, components: { ...componentSchemas, ...Object.fromEntries(Object.entries(components).map(([name]) => [name, schemas[name].props])) }, descriptions: schemas, guide, configuration: { collection: options.collection, basePath: options.basePath, previewPath: options.previewPath, homeSlug: options.homeSlug } }),
+        handler: async () => ({ version: 1, components: { ...componentSchemas, ...Object.fromEntries(Object.entries(components).map(([name]) => [name, schemas[name].props])) }, descriptions: schemas, motion, guide, configuration: { collection: options.collection, basePath: options.basePath, previewPath: options.previewPath, homeSlug: options.homeSlug } }),
       },
       validate: {
         permission: 'content:read',

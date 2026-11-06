@@ -1,4 +1,4 @@
-/** A final render-time check also covers URLs produced by data bindings. */
+/** The URL rule. resolvePage applies it to every built-in URL after binding, before rendering; host components use it for their own. */
 export function safeUrl(value: unknown, image = false): string | undefined {
   if (typeof value !== 'string' || value !== value.trim() || /[\u0000-\u0020\u007f\\]/.test(value)) return undefined;
   if (value.startsWith('/') && !value.startsWith('//')) return value;

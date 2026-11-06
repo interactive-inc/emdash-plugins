@@ -1,6 +1,8 @@
-import { evaluateVisibility, resolvePropValue, type Spec } from '@json-render/core';
 import { z } from 'zod';
 import { componentContract, type ComponentExtensions } from './extensions.ts';
+import { listLength, maxListItems } from './list-limits.ts';
+import { maxMotionElements } from './motion-tokens.ts';
+import type { AuthoredMotion } from './catalog.ts';
 
 const name = z.string().regex(/^[a-z][a-z0-9_]*$/).max(60);
 const statePath = z.string().regex(/^\/(page|data)(\/[a-zA-Z0-9_-]+)*$/).max(300);
@@ -30,7 +32,7 @@ const documentSchema = z.strictObject({
   data: z.record(name, z.strictObject({
     collection: name,
     id: z.string().min(1).max(200).optional(),
-    limit: z.number().int().min(1).max(24).optional(),
+    limit: z.number().int().min(1).max(maxListItems).optional(),
   })).refine(value => Object.keys(value).length <= 8, 'At most eight data queries are allowed').optional(),
 });
 export type PageDocument = z.infer<typeof documentSchema>;
@@ -44,7 +46,7 @@ function isBinding(value: unknown): boolean {
 
 /** Validates both the catalog contract and bounded tree structure before storage or rendering. */
 export function validateDocument(input: unknown, extensions: ComponentExtensions = {}): ValidationResult {
-  const { props: componentProps, containers: containerNames } = componentContract(extensions);
+  const { props: componentProps, containers: containerNames, motion: motionNames } = componentContract(extensions);
   let serialized: string;
   try { serialized = JSON.stringify(input); } catch { return { success: false, errors: ['Document must be JSON'] }; }
   if (!serialized || serialized.length > 200000) return { success: false, errors: ['Document exceeds 200 KB'] };
@@ -59,15 +61,27 @@ export function validateDocument(input: unknown, extensions: ComponentExtensions
     if (!Object.hasOwn(componentProps, element.type)) { errors.push(`${key}: unregistered component`); continue; }
     const shape = componentProps[element.type]!.shape;
     for (const prop of Object.keys(element.props)) {
-      if (!Object.hasOwn(shape, prop)) errors.push(`${key}.${prop}: unknown property`);
+      if (prop === 'motion' && !Object.hasOwn(shape, prop)) errors.push(element.type === 'Section'
+        ? `${key}.motion: Section stays still; animate the elements inside it`
+        : `${key}.motion: ${element.type} does not support motion; animate an element inside or around it`);
+      else if (!Object.hasOwn(shape, prop)) errors.push(`${key}.${prop}: unknown property`);
     }
     for (const [prop, validator] of Object.entries(shape)) {
       const value = element.props[prop];
+      if (prop === 'motion' && isBinding(value)) { errors.push(`${key}.motion: motion cannot be bound to data`); continue; }
       const result = isBinding(value) ? binding.safeParse(value) : (validator as z.ZodType).safeParse(value);
-      if (!result.success) errors.push(`${key}.${prop}: ${result.error.issues[0]?.message}`);
+      if (!result.success) {
+        const issue = result.error.issues[0];
+        errors.push(`${[key, prop, ...(issue?.path ?? [])].join('.')}: ${issue?.message}`);
+      }
     }
     if ((element.children?.length || element.repeat) && !containerNames.has(element.type)) errors.push(`${key}: only containers may have children or repeat`);
-    if (element.repeat && !Object.hasOwn(document.data ?? {}, element.repeat.statePath.slice(6))) errors.push(`${key}: repeat data source is missing`);
+    if (element.repeat) {
+      const source = element.repeat.statePath.slice(6);
+      if (!Object.hasOwn(document.data ?? {}, source)) errors.push(`${key}: repeat data source is missing`);
+      // A query with id loads one entry, which a repeat cannot list.
+      else if (document.data![source]!.id) errors.push(`${key}: repeat needs a list query without id`);
+    }
   }
   const visited = new Set<string>();
   const walk = (key: string, depth: number, repeated: boolean) => {
@@ -85,31 +99,39 @@ export function validateDocument(input: unknown, extensions: ComponentExtensions
   };
   walk(document.spec.root, 0, false);
   for (const key of keys) if (!visited.has(key)) errors.push(`${key}: unreachable element`);
+  if (!errors.length) errors.push(...motionErrors(document, motionNames));
   return errors.length ? { success: false, errors: errors.slice(0, 30) } : { success: true, document };
 }
 
-/** Binding results are revalidated so data cannot inject props outside the component contract. */
-export function validateResolvedSpec(document: PageDocument, state: PageState, extensions: ComponentExtensions = {}): Spec {
-  const { props: componentProps } = componentContract(extensions);
+/**
+ * One element moves at a time: nothing animates inside a moving element, no Section
+ * sits inside one, and the children of a staggering container move with it instead
+ * of on their own. The limit counts what moves on the page, so every repeated copy counts.
+ */
+function motionErrors(document: PageDocument, motionNames: Set<string>): string[] {
   const errors: string[] = [];
-  const walk = (key: string, item?: unknown) => {
-    const element = document.spec.elements[key];
-    if (!element || !evaluateVisibility(element.visible, { stateModel: state, repeatItem: item })) return;
-    const context = { stateModel: state, repeatItem: item };
-    const props = Object.fromEntries(Object.entries(element.props).map(([name, value]) => [name, resolvePropValue(value, context)]));
-    const result = componentProps[element.type].strict().safeParse(props);
-    if (!result.success) errors.push(`${key}: bound data does not match ${element.type}`);
-    if (element.repeat) {
-      const values = state.data[element.repeat.statePath.slice(6)];
-      if (!Array.isArray(values)) { errors.push(`${key}: repeat source must be a list`); return; }
-      for (const value of values.slice(0, 24)) {
-        for (const child of element.children ?? []) walk(child, value);
-      }
-      return;
-    }
-    for (const child of element.children ?? []) walk(child, item);
+  let count = 0;
+  // `moving` is the element that moves this subtree and, for a staggered child, the container whose stagger moves it.
+  const walk = (key: string, copies: number, moving?: { key: string; by?: string }, staggering?: string) => {
+    const element = document.spec.elements[key]!;
+    const motion = element.props.motion as AuthoredMotion | undefined;
+    if (moving && element.type === 'Section') errors.push(`${key}: Section stays still, so ${moving.key} cannot move it; put motion on elements inside the Section`);
+    if (staggering) {
+      count += copies;
+      if (motion) errors.push(`${key}.motion: ${staggering} already staggers its children; remove this motion`);
+      else if (!motionNames.has(element.type)) errors.push(`${key}: ${element.type} cannot move, so ${staggering} cannot stagger it`);
+    } else if (motion && moving) errors.push(moving.by
+      ? `${key}.motion: ${moving.key} already moves with ${moving.by}'s stagger; remove this motion or the stagger on ${moving.by}`
+      : `${key}.motion: ${moving.key} already moves this element; keep motion on only one of them`);
+    else if (motion && !motion.stagger) count += copies;
+    if (motion?.stagger && !element.children?.length) errors.push(`${key}.motion: stagger needs children`);
+    const movesWith = moving ?? (staggering ? { key, by: staggering } : motion && !motion.stagger ? { key } : undefined);
+    const group = !movesWith && motion?.stagger ? key : undefined;
+    // Nested repeats are rejected earlier, so a copy count is at most one list long.
+    const items = element.repeat ? listLength(document, element.repeat.statePath.slice(6)) : 1;
+    for (const child of element.children ?? []) walk(child, copies * items, movesWith, group);
   };
-  walk(document.spec.root);
-  if (errors.length) throw new Error(errors.join('; '));
-  return document.spec;
+  walk(document.spec.root, 1);
+  if (count > maxMotionElements) errors.push(`At most ${maxMotionElements} elements may move; this page moves up to ${count}, counting each staggered child and each repeated copy`);
+  return errors;
 }

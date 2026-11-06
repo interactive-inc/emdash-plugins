@@ -1,7 +1,9 @@
 import { resolveOptions, type BuilderOptions } from '../options.ts';
 import type { ComponentExtensions } from '../extensions.ts';
 import { getEmDashCollection, getEmDashEntry } from 'emdash';
-import { validateDocument, validateResolvedSpec, type PageDocument, type PageState } from '../document.ts';
+import { validateDocument, type PageDocument, type PageState } from '../document.ts';
+import { defaultListItems } from '../list-limits.ts';
+import { resolvePage, type ResolvedView } from '../resolve-page.ts';
 
 export type LoadedPage = {
   id: string;
@@ -10,6 +12,8 @@ export type LoadedPage = {
   slug: string;
   document: PageDocument;
   state: PageState;
+  /** What the page renders; the only page data that reaches the browser. */
+  view: ResolvedView;
   isPreview: boolean;
 };
 
@@ -31,11 +35,11 @@ export async function loadPage(identifier: string, input: BuilderOptions = {}, c
       if (result.error) throw new Error(`Could not load data source ${name}`);
       return [name, result.entry ? { ...result.entry.data, id: result.entry.id } : null];
     }
-    const result = await getEmDashCollection(query.collection, { limit: query.limit ?? 6 });
+    const result = await getEmDashCollection(query.collection, { limit: query.limit ?? defaultListItems });
     if (result.error) throw new Error(`Could not load data source ${name}`);
     return [name, result.entries.map(item => ({ ...item.data, id: item.id }))];
   })));
   const state: PageState = { page: { title, description, slug }, data };
-  validateResolvedSpec(document, state, components);
-  return { id: entry.id, title, description, slug, document, state, isPreview };
+  const view = resolvePage(document, state, components, { motion: options.motion });
+  return { id: entry.id, title, description, slug, document, state, view, isPreview };
 }

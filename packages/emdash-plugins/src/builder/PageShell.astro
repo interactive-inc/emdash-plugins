@@ -1,27 +1,15 @@
 ---
-import { SiteRenderer } from '@interactive-inc/emdash-plugins/builder/renderer';
+import components from 'virtual:emdash-plugins/builder/extensions';
+import PageDocument from './PageDocument.astro';
+import SiteIsland from './island.tsx';
+import { ResolvedSite } from './site-view.tsx';
 import type { LoadedPage } from './server/load-page.ts';
-import './styles/site.css';
 
-type Props = { page: LoadedPage | null; status: number; previewRoute?: boolean; components?: import('./extensions.ts').ComponentExtensions };
-const { page, status, previewRoute = false, components = {} } = Astro.props;
-const preview = previewRoute || page?.isPreview;
-const title = page?.title ?? (status === 404 ? 'ページが見つかりません' : 'ページを表示できません');
+// Components come from builderIntegration() so the static page and the island always render the same ones.
+type Props = { page: LoadedPage | null; status: number; previewRoute?: boolean };
+const view = Astro.props.page?.view;
 ---
-<!doctype html>
-<html lang="ja">
-  <head>
-    <meta charset="utf-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1" />
-    <title>{title}</title>
-    {page?.description && <meta name="description" content={page.description} />}
-    {(preview || status !== 200) && <meta name="robots" content="noindex, nofollow" />}
-  </head>
-  <body class={preview ? 'is-preview' : undefined}>
-    {preview && <aside class="preview-banner" role="status">プレビュー — 保存済みの内容を表示しています</aside>}
-    <main>
-      {page ? <SiteRenderer document={page.document} state={page.state} components={components} /> :
-        <div class="error-page"><p class="error-code">{status}</p><h1>{title}</h1><p>{status === 404 ? 'URLをご確認ください。' : '少し時間をおいて、もう一度お試しください。'}</p><a href="/">ホームへ</a></div>}
-    </main>
-  </body>
-</html>
+<PageDocument {...Astro.props}>
+  <Fragment slot="head">{view?.motion && <noscript><style is:inline>[data-motion]{opacity:1!important;transform:none!important;animation:none!important}</style></noscript>}</Fragment>
+  {view && (view.motion ? <SiteIsland client:builder-motion view={view} /> : <ResolvedSite view={view} components={components} />)}
+</PageDocument>

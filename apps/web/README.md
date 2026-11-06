@@ -19,7 +19,7 @@ portless
 - MCP: https://emdash-plugins.localhost/_emdash/api/mcp
 
 `setup:local`は`apps/web/.data/`と、未設定の場合にランダムなプレビュー署名キーを`apps/web/.env`に用意します。
-`seed`はサンプルのホームとガイドを作ります。同じslugの既存ページは上書きしません。
+`seed`はサンプルのホームとガイドを作ります。ホームはKV・特徴カード・CTAに入場アニメーションを付け、ガイドはスクリプトなしの静的ページです。同じslugの既存ページは上書きしません。
 Portlessから起動すると、AstroはPortlessの子プロセスとして動きます。停止は`vp run dev:stop`、状態は`vp run dev:status`で確認できます。
 依存パッケージ・Astro設定・環境変数・プラグインのビルドを変更する前に、このアプリを完全に停止してください。変更後に`portless`で起動し直します。EmDash 1.3.1では内部再起動前のランタイムが残り、保存時に`Vite module runner has been closed`となる場合があります。DBやセッションを削除する必要はありません。
 
@@ -80,8 +80,9 @@ EmDashの標準フィールドとして`slug: "home"`を指定するとホーム
 ```
 
 表示部品では`{"$state":"/data/article/title"}`などで参照します。
-一覧はコンテナに`"repeat":{"statePath":"/data/posts","key":"id"}`を付け、子のプロパティで`{"$item":"title"}`を使います。
+一覧はコンテナに`"repeat":{"statePath":"/data/posts","key":"id"}`を付け、子のプロパティで`{"$item":"title"}`を使います。`repeat`には`id`のない一覧クエリだけを指定できます。
 リンクの`{"$template":"/articles/${slug}"}`なども使えます。URLに対応するページやルートは別途用意してください。
+要素の`props`に`"motion":{"effect":"fade-up"}`を加えると、画面に入ったときに1回だけ入場アニメーションを再生します。一覧はStack・Gridに`"motion":{"effect":"fade-up","stagger":"medium"}`を付けると、子が順に表示されます。使える値と制約は`builder__catalog`と[パッケージのREADME](../../packages/emdash-plugins/README.md#モーション)を参照してください。
 記事本文は`PortableText`部品へ`value`として渡します。標準テキスト・リンク・画像を描画します。EmDash固有の埋め込みやプラグイン独自ブロックには、対応するReact部品の追加が必要です。メディアはEmDashでアップロードし、返されたメディアURLを`Image.src`に指定します。
 
 ## プレビューと公開
@@ -92,7 +93,7 @@ EmDashの標準フィールドとして`slug: "home"`を指定するとホーム
 - EmDash標準のView on siteも同じページを表示します。
 - 独自プレビューURLは15分有効で、対象の1ページだけを許可します。
 - ページから参照する別記事は公開状態に従います。ページのトークンで別記事の下書きは読めません。
-- プレビューは`private, no-store`と`noindex, nofollow`を返します。管理画面内のiframeはスクリプトを許可しません。
+- プレビューは`private, no-store`と`noindex, nofollow`を返します。管理画面内のiframeはスクリプトを許可しないため、モーションのあるページも完成状態で表示します。アニメーションは公開ページとプレビューURLで確認します。
 - 登録済み部品・プロパティ・テーマだけを受け付けます。JavaScript、任意CSS、HTML注入、外部データ取得先や未登録アクションはJSONに追加できません。
 
 ## 確認

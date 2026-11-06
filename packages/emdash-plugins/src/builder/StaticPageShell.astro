@@ -1,0 +1,11 @@
+---
+import components from 'virtual:emdash-plugins/builder/extensions';
+import PageDocument from './PageDocument.astro';
+import { ResolvedSite } from './site-view.tsx';
+import type { LoadedPage } from './server/load-page.ts';
+
+// The routes' shell with motion: false. It never imports the island, so the build emits no page script.
+type Props = { page: LoadedPage | null; status: number; previewRoute?: boolean };
+const view = Astro.props.page?.view;
+---
+<PageDocument {...Astro.props}>{view && <ResolvedSite view={view} components={components} />}</PageDocument>

@@ -1,6 +1,6 @@
 {
   "name": "@interactive-inc/emdash-plugins",
-  "version": "0.1.0",
+  "version": "0.1.1",
   "description": "EmDash plugins by Interactive Inc. builder: chat-authored json-render pages, MCP tools and previews",
   "license": "MIT",
   "repository": {

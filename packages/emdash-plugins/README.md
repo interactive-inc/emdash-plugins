@@ -186,6 +186,8 @@ Notice: defineComponent({
 
 CSPを独自に設定するホストでは、すべてのページでテーマのstyle属性（`.site`の`style`）を許可してください。モーションのあるページでは、さらに自オリジンのモジュールscript、Astroのislandが出力するインラインの`<script>`と`<style>`、JavaScript無効時用の`<noscript>`内のインライン`<style>`、動く要素のstyle属性を許可してください。モーションのないページと`motion: false`では、islandのscriptと`<noscript>`のstyleを出力しません。パッケージ既定のCSPは`frame-ancestors`・`object-src`・`base-uri`だけを制限します。
 
+`builderIntegration`はmiddlewareで、サイトとEmDashのすべての応答に`X-Content-Type-Options: nosniff`・`Referrer-Policy: no-referrer`・既定のCSPを付けます。応答がすでに設定しているヘッダーは上書きしません。`Response.redirect()`や`fetch()`の応答のようにヘッダーを変更できない応答は、状態コード・ヘッダー・本文を保ったまま作り直してから付けます。
+
 ### 権限と検証
 
 プレビュー発行はEmDashの`content:read_drafts`権限に従います。匿名とSubscriberは拒否し、Contributor・Author・Editor・Adminは許可します。MCPでは加えて`mcp:tools:builder`スコープが必要です。管理画面は標準セッションを使います。EmDash 1.3.1のプラグインRESTルートをPATで直接呼ぶ場合は`admin`スコープも必要ですが、ロールによる権限チェックは引き続き適用されます。署名リンクは発行から15分有効で、コレクションと1ページに限定されます。

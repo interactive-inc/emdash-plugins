@@ -51,7 +51,7 @@ PRとmainへのpushでは軽い型検査と普段のテストだけをCIで実�
 
 `test:package`は一時フォルダー内だけで導入用の圧縮ファイルと独立したEmDashホストを作成します。リポジトリに配布ファイルは残しません。インターネットから依存を取得する場合があります。
 ルートは開発用のprivateワークスペースで、配布対象は`packages/emdash-plugins`だけです。
-プラグインはMITライセンスで、`publishConfig.access: public`を設定しています。パッケージ名は`@interactive-inc/emdash-plugins`です。npmへの公開は`packages/emdash-plugins`で`vp pm publish`を実行する別の操作です。
+プラグインはMITライセンスで、`publishConfig.access: public`を設定しています。パッケージ名は`@interactive-inc/emdash-plugins`です。npmへの公開は`packages/emdash-plugins`で`vp pm publish`を実行する別の操作です。手順は[npmへの公開](.docs/release.md)を参照してください。
 `.env`、DB、セッション、サンプルのコンテンツは配布ファイルに含めません。
 
 `vp run smoke`は起動中のローカルサンプルに対する追加の検査です。MCPクライアントの登録なしで、実際のMCPへ接続してツール一覧・作成・公開・プレビューを確認します。Portless以外で直接起動した場合は`SMOKE_ORIGIN=http://127.0.0.1:4331 vp run smoke`を使います。

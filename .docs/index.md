@@ -28,7 +28,7 @@
 
 ## 開発
 
-[起動・検査](../README.md) · [MCPとページの操作](../apps/web/README.md) · [パッケージAPI](../packages/emdash-plugins/README.md) · [デプロイ](deployment.md)
+[起動・検査](../README.md) · [MCPとページの操作](../apps/web/README.md) · [パッケージAPI](../packages/emdash-plugins/README.md) · [npmへの公開](release.md) · [デプロイ](deployment.md)
 
 - コマンドはVite+（vp）を使う。PortlessのURLは`https://emdash-plugins.localhost`。
 - 依存・設定・環境・プラグインのビルドを変える前に開発アプリを停止し、変更後に完全に起動し直す。EmDash 1.3.1は内部再起動後に古いVite runnerを参照する場合がある。
@@ -37,4 +37,4 @@
 - 実EmDash・ハイドレーション・サンプルは`test:integration`、リリース前の全検査は`release`。重いCIは手動または`v*`タグで実行する。モックで実環境の検証を代替しない。[検査の分担](testing.md)を参照。
 - `vp run test:package`は一時フォルダーの独立ホストでインストール・MCP・公開/下書き・プレビューを検査する。配布ファイルはリポジトリへ残さない。
 - `vp run smoke`は起動中のローカルアプリ専用。公式開発ログインを使うため本番へ実行しない。
-- ライセンスはMIT。npmへの公開は`packages/emdash-plugins`で`vp pm publish`を実行する。
+- ライセンスはMIT。npmへの公開は`packages/emdash-plugins`で`vp pm publish`を実行する。2FAが必要なので人が実行し、確認後に`v<version>`タグを付ける。[手順](release.md)を参照。

@@ -61,5 +61,5 @@ Design decisions: [.docs/index.md](.docs/index.md). Setup and checks: [README.md
 
 ## Release and deployment
 
-- Publish from `packages/emdash-plugins` with `vp pm publish` after `vp pm publish --dry-run`. Publishing is a separate, explicit action.
+- Publish from `packages/emdash-plugins` with `vp pm publish` after `vp pm publish --dry-run`. Publishing is a separate, explicit action that a person runs (npm requires browser 2FA); agents prepare and verify it. After `npm view` shows the version, tag that commit `v<version>` and push it. A brand-new package first shows a `0.0.0-stage` placeholder for a few minutes. See [.docs/release.md](.docs/release.md).
 - Cloudflare deployment uses the ignored `apps/web/wrangler.production.jsonc`; `wrangler.jsonc` contains placeholders only. Run `vp run deploy:production`. Never reapply the initial database bootstrap or import local development credentials on redeploy. See [.docs/deployment.md](.docs/deployment.md).
